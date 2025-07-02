@@ -155,7 +155,7 @@ const renderHighlightedLine = (
  * };
  * ```
  */
-const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
+export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
     (
         {
             className = '',
@@ -359,5 +359,3 @@ const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
 );
 
 DyeLight.displayName = 'DyeLight';
-
-export default DyeLight;
