@@ -1,10 +1,30 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 
-import { autoResize } from './domUtils';
 import type { DyeLightProps, DyeLightRef } from './types';
-import { absoluteToLinePos, getLinePositions, isColorValue } from './textUtils';
-import { DEFAULT_BASE_STYLE, DEFAULT_CONTAINER_STYLE, DEFAULT_HIGHLIGHT_LAYER_STYLE } from './styles';
 
+import { autoResize } from './domUtils';
+import { DEFAULT_BASE_STYLE, DEFAULT_CONTAINER_STYLE, DEFAULT_HIGHLIGHT_LAYER_STYLE } from './styles';
+import { absoluteToLinePos, getLinePositions, isColorValue } from './textUtils';
+
+/**
+ * @fileoverview DyeLight - A React textarea component with advanced text highlighting capabilities
+ *
+ * This component provides a textarea with overlay-based text highlighting that supports:
+ * - Character-level highlighting using absolute text positions
+ * - Line-level highlighting with CSS classes or color values
+ * - Automatic height adjustment based on content
+ * - Synchronized scrolling between textarea and highlight layer
+ * - Both controlled and uncontrolled usage patterns
+ * - RTL text direction support
+ */
+
+/**
+ * Creates a line element with optional highlighting
+ * @param content - The content to render inside the line element
+ * @param lineIndex - The index of the line for React key prop
+ * @param lineHighlight - Optional CSS class name or color value for line highlighting
+ * @returns A React div element with the line content and optional highlighting
+ */
 const createLineElement = (content: React.ReactNode, lineIndex: number, lineHighlight?: string): React.ReactElement => {
     if (!lineHighlight) {
         return <div key={lineIndex}>{content}</div>;
@@ -22,6 +42,14 @@ const createLineElement = (content: React.ReactNode, lineIndex: number, lineHigh
     );
 };
 
+/**
+ * Renders a single line with character-level highlights and optional line-level highlighting
+ * @param line - The text content of the line
+ * @param lineIndex - The index of the line for React key prop
+ * @param ranges - Array of character ranges to highlight within the line
+ * @param lineHighlight - Optional CSS class name or color value for line highlighting
+ * @returns A React element representing the highlighted line
+ */
 const renderHighlightedLine = (
     line: string,
     lineIndex: number,
@@ -84,6 +112,15 @@ const renderHighlightedLine = (
  * and optional line-level highlighting. Perfect for syntax highlighting, error indication,
  * and text annotation without the complexity of line-based positioning.
  *
+ * Features:
+ * - Character-level highlighting using absolute text positions
+ * - Line-level highlighting with CSS classes or color values
+ * - Automatic height adjustment based on content
+ * - Synchronized scrolling between textarea and highlight layer
+ * - Support for both controlled and uncontrolled usage
+ * - Accessibility-friendly with proper ARIA attributes
+ * - RTL text direction support
+ *
  * @example
  * ```tsx
  * const MyComponent = () => {
@@ -144,6 +181,10 @@ const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
 
         const currentValue = value !== undefined ? value : internalValue;
 
+        /**
+         * Handles automatic resizing of the textarea based on content
+         * @param element - The textarea element to resize
+         */
         const handleAutoResize = useCallback(
             (element: HTMLTextAreaElement) => {
                 if (!enableAutoResize) return;
@@ -154,6 +195,10 @@ const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             [enableAutoResize],
         );
 
+        /**
+         * Handles textarea value changes and triggers auto-resize if enabled
+         * @param e - The change event from the textarea
+         */
         const handleChange = useCallback(
             (e: React.ChangeEvent<HTMLTextAreaElement>) => {
                 const newValue = e.target.value;
@@ -168,6 +213,9 @@ const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             [value, onChange, handleAutoResize],
         );
 
+        /**
+         * Synchronizes scroll position between textarea and highlight layer
+         */
         const syncScroll = useCallback(() => {
             if (textareaRef.current && highlightLayerRef.current) {
                 const { scrollLeft, scrollTop } = textareaRef.current;
@@ -176,6 +224,10 @@ const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             }
         }, []);
 
+        /**
+         * Synchronizes computed styles from textarea to highlight layer
+         * Ensures font, padding, and spacing properties match exactly
+         */
         const syncStyles = useCallback(() => {
             if (!textareaRef.current || !highlightLayerRef.current) return;
 
@@ -219,6 +271,10 @@ const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             syncStyles();
         }, [currentValue, handleAutoResize, enableAutoResize, syncStyles]);
 
+        /**
+         * Computes the highlighted content by processing text and highlight ranges
+         * Groups highlights by line and renders each line with appropriate highlighting
+         */
         const highlightedContent = useMemo(() => {
             const { lines, lineStarts } = getLinePositions(currentValue);
 
