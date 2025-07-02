@@ -3,6 +3,7 @@
 A lightweight TypeScript React component for highlighting characters in textareas with powerful text annotation capabilities.
 
 [![wakatime](https://wakatime.com/badge/user/a0b906ce-b8e7-4463-8bce-383238df6d4b/project/897368ef-62b9-48be-bba9-7c530f10e3da.svg)](https://wakatime.com/badge/user/a0b906ce-b8e7-4463-8bce-383238df6d4b/project/897368ef-62b9-48be-bba9-7c530f10e3da)
+[![codecov](https://codecov.io/gh/ragaeeb/dyelight/graph/badge.svg?token=7VETE1WNMP)](https://codecov.io/gh/ragaeeb/dyelight)
 ![Bun](https://img.shields.io/badge/Bun-%23000000.svg?style=for-the-badge&logo=bun&logoColor=white)
 [![Node.js CI](https://github.com/ragaeeb/dyelight/actions/workflows/build.yml/badge.svg)](https://github.com/ragaeeb/dyelight/actions/workflows/build.yml)
 ![GitHub License](https://img.shields.io/github/license/ragaeeb/dyelight)

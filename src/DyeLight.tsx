@@ -1,10 +1,13 @@
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 
 import type { DyeLightProps, DyeLightRef } from './types';
 
-import { autoResize } from './domUtils';
+import { useAutoResize } from './hooks/useAutoResize';
+import { useHighlightedContent } from './hooks/useHighlightedContent';
+import { useHighlightSync } from './hooks/useHighlightSync';
+import { useTextareaValue } from './hooks/useTextareaValue';
 import { DEFAULT_BASE_STYLE, DEFAULT_CONTAINER_STYLE, DEFAULT_HIGHLIGHT_LAYER_STYLE } from './styles';
-import { absoluteToLinePos, getLinePositions, isColorValue } from './textUtils';
+import { isColorValue } from './textUtils';
 
 /**
  * @fileoverview DyeLight - A React textarea component with advanced text highlighting capabilities
@@ -20,10 +23,6 @@ import { absoluteToLinePos, getLinePositions, isColorValue } from './textUtils';
 
 /**
  * Creates a line element with optional highlighting
- * @param content - The content to render inside the line element
- * @param lineIndex - The index of the line for React key prop
- * @param lineHighlight - Optional CSS class name or color value for line highlighting
- * @returns A React div element with the line content and optional highlighting
  */
 const createLineElement = (content: React.ReactNode, lineIndex: number, lineHighlight?: string): React.ReactElement => {
     if (!lineHighlight) {
@@ -44,11 +43,6 @@ const createLineElement = (content: React.ReactNode, lineIndex: number, lineHigh
 
 /**
  * Renders a single line with character-level highlights and optional line-level highlighting
- * @param line - The text content of the line
- * @param lineIndex - The index of the line for React key prop
- * @param ranges - Array of character ranges to highlight within the line
- * @param lineHighlight - Optional CSS class name or color value for line highlighting
- * @returns A React element representing the highlighted line
  */
 const renderHighlightedLine = (
     line: string,
@@ -111,49 +105,6 @@ const renderHighlightedLine = (
  * A textarea component with support for highlighting character ranges using absolute positions
  * and optional line-level highlighting. Perfect for syntax highlighting, error indication,
  * and text annotation without the complexity of line-based positioning.
- *
- * Features:
- * - Character-level highlighting using absolute text positions
- * - Line-level highlighting with CSS classes or color values
- * - Automatic height adjustment based on content
- * - Synchronized scrolling between textarea and highlight layer
- * - Support for both controlled and uncontrolled usage
- * - Accessibility-friendly with proper ARIA attributes
- * - RTL text direction support
- *
- * @example
- * ```tsx
- * const MyComponent = () => {
- *   const [text, setText] = useState('Hello world\nSecond line');
- *
- *   // Highlight characters 0-5 (absolute positions)
- *   const highlights = HighlightBuilder.ranges([
- *     { start: 0, end: 5, className: 'bg-yellow-200' },
- *     { start: 12, end: 18, className: 'bg-blue-200' }
- *   ]);
- *
- *   // Highlight keywords automatically
- *   const keywordHighlights = HighlightBuilder.pattern(
- *     text,
- *     /\b(function|const|let)\b/g,
- *     'text-blue-600'
- *   );
- *
- *   // Optional line highlights
- *   const lineHighlights = HighlightBuilder.lines([
- *     { line: 1, className: 'bg-red-100' }
- *   ]);
- *
- *   return (
- *     <DyeLight
- *       value={text}
- *       onChange={setText}
- *       highlights={[...highlights, ...keywordHighlights]}
- *       lineHighlights={lineHighlights}
- *     />
- *   );
- * };
- * ```
  */
 export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
     (
@@ -172,77 +123,61 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
         },
         ref,
     ) => {
-        const textareaRef = useRef<HTMLTextAreaElement>(null);
-        const highlightLayerRef = useRef<HTMLDivElement>(null);
         const containerRef = useRef<HTMLDivElement>(null);
 
-        const [internalValue, setInternalValue] = useState(value ?? defaultValue);
-        const [textareaHeight, setTextareaHeight] = useState<number | undefined>();
-
-        const currentValue = value !== undefined ? value : internalValue;
-
-        /**
-         * Handles automatic resizing of the textarea based on content
-         * @param element - The textarea element to resize
-         */
-        const handleAutoResize = useCallback(
-            (element: HTMLTextAreaElement) => {
-                if (!enableAutoResize) return;
-
-                autoResize(element);
-                setTextareaHeight(element.scrollHeight);
-            },
-            [enableAutoResize],
+        // Custom hooks for managing component logic
+        const { currentValue, handleChange, handleInput, setValue, textareaRef } = useTextareaValue(
+            value,
+            defaultValue,
+            onChange,
         );
 
-        /**
-         * Handles textarea value changes and triggers auto-resize if enabled
-         * @param e - The change event from the textarea
-         */
-        const handleChange = useCallback(
+        const { handleAutoResize, textareaHeight } = useAutoResize(enableAutoResize);
+
+        const { highlightLayerRef, syncScroll, syncStyles } = useHighlightSync();
+
+        const highlightedContent = useHighlightedContent(
+            currentValue,
+            highlights,
+            lineHighlights,
+            renderHighlightedLine,
+        );
+
+        // Enhanced change handler that includes auto-resize
+        const handleChangeWithResize = useCallback(
             (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-                const newValue = e.target.value;
-
-                if (value === undefined) {
-                    setInternalValue(newValue);
-                }
-
-                onChange?.(newValue);
+                handleChange(e);
                 handleAutoResize(e.target);
             },
-            [value, onChange, handleAutoResize],
+            [handleChange, handleAutoResize],
         );
 
-        /**
-         * Synchronizes scroll position between textarea and highlight layer
-         */
-        const syncScroll = useCallback(() => {
-            if (textareaRef.current && highlightLayerRef.current) {
-                const { scrollLeft, scrollTop } = textareaRef.current;
-                highlightLayerRef.current.scrollTop = scrollTop;
-                highlightLayerRef.current.scrollLeft = scrollLeft;
-            }
-        }, []);
+        // Enhanced input handler that includes auto-resize
+        const handleInputWithResize = useCallback(
+            (e: React.FormEvent<HTMLTextAreaElement>) => {
+                handleInput(e);
+                handleAutoResize(e.currentTarget);
+            },
+            [handleInput, handleAutoResize],
+        );
 
-        /**
-         * Synchronizes computed styles from textarea to highlight layer
-         * Ensures font, padding, and spacing properties match exactly
-         */
-        const syncStyles = useCallback(() => {
-            if (!textareaRef.current || !highlightLayerRef.current) return;
+        // Enhanced setValue that includes auto-resize
+        const setValueWithResize = useCallback(
+            (newValue: string) => {
+                setValue(newValue);
+                if (textareaRef.current) {
+                    handleAutoResize(textareaRef.current);
+                }
+            },
+            [setValue, handleAutoResize, textareaRef],
+        );
 
-            const computedStyle = getComputedStyle(textareaRef.current);
-            const highlightLayer = highlightLayerRef.current;
+        // Scroll handler with ref binding
+        const handleScroll = useCallback(() => {
+            syncScroll(textareaRef);
+        }, [syncScroll, textareaRef]);
 
-            highlightLayer.style.padding = computedStyle.padding;
-            highlightLayer.style.fontSize = computedStyle.fontSize;
-            highlightLayer.style.fontFamily = computedStyle.fontFamily;
-            highlightLayer.style.lineHeight = computedStyle.lineHeight;
-            highlightLayer.style.letterSpacing = computedStyle.letterSpacing;
-            highlightLayer.style.wordSpacing = computedStyle.wordSpacing;
-            highlightLayer.style.textIndent = computedStyle.textIndent;
-        }, []);
-
+        // Expose ref methods
         useImperativeHandle(
             ref,
             () => ({
@@ -251,78 +186,20 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
                 getValue: () => currentValue,
                 select: () => textareaRef.current?.select(),
                 setSelectionRange: (start: number, end: number) => textareaRef.current?.setSelectionRange(start, end),
-                setValue: (newValue: string) => {
-                    if (value === undefined) {
-                        setInternalValue(newValue);
-                    }
-                    if (textareaRef.current) {
-                        textareaRef.current.value = newValue;
-                        handleAutoResize(textareaRef.current);
-                    }
-                },
+                setValue: setValueWithResize,
             }),
-            [currentValue, value, handleAutoResize],
+            [currentValue, setValueWithResize],
         );
 
+        // Sync styles and handle auto-resize on value changes
         useEffect(() => {
             if (textareaRef.current && enableAutoResize) {
                 handleAutoResize(textareaRef.current);
             }
-            syncStyles();
-        }, [currentValue, handleAutoResize, enableAutoResize, syncStyles]);
+            syncStyles(textareaRef);
+        }, [currentValue, handleAutoResize, enableAutoResize, syncStyles, textareaRef]);
 
-        /**
-         * Computes the highlighted content by processing text and highlight ranges
-         * Groups highlights by line and renders each line with appropriate highlighting
-         */
-        const highlightedContent = useMemo(() => {
-            const { lines, lineStarts } = getLinePositions(currentValue);
-
-            // Group highlights by line
-            const highlightsByLine: {
-                [lineIndex: number]: Array<{
-                    className?: string;
-                    end: number;
-                    start: number;
-                    style?: React.CSSProperties;
-                }>;
-            } = {};
-
-            highlights.forEach((highlight) => {
-                const startPos = absoluteToLinePos(highlight.start, lineStarts);
-                const endPos = absoluteToLinePos(highlight.end - 1, lineStarts);
-
-                // Handle highlights that span multiple lines
-                for (let lineIndex = startPos.line; lineIndex <= endPos.line; lineIndex++) {
-                    if (!highlightsByLine[lineIndex]) {
-                        highlightsByLine[lineIndex] = [];
-                    }
-
-                    const lineStart = lineStarts[lineIndex];
-
-                    // Calculate highlight range within this line
-                    const rangeStart = Math.max(highlight.start - lineStart, 0);
-                    const rangeEnd = Math.min(highlight.end - lineStart, lines[lineIndex].length);
-
-                    if (rangeEnd > rangeStart) {
-                        highlightsByLine[lineIndex].push({
-                            className: highlight.className,
-                            end: rangeEnd,
-                            start: rangeStart,
-                            style: highlight.style,
-                        });
-                    }
-                }
-            });
-
-            return lines.map((line, lineIndex) => {
-                const lineHighlight = lineHighlights[lineIndex];
-                const ranges = highlightsByLine[lineIndex] || [];
-
-                return renderHighlightedLine(line, lineIndex, ranges, lineHighlight);
-            });
-        }, [currentValue, highlights, lineHighlights]);
-
+        // Compute styles
         const baseTextareaStyle: React.CSSProperties = {
             ...DEFAULT_BASE_STYLE,
             height: textareaHeight ? `${textareaHeight}px` : undefined,
@@ -345,8 +222,9 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
                 <textarea
                     className={className}
                     dir={dir}
-                    onChange={handleChange}
-                    onScroll={syncScroll}
+                    onChange={handleChangeWithResize}
+                    onInput={handleInputWithResize}
+                    onScroll={handleScroll}
                     ref={textareaRef}
                     rows={rows}
                     style={baseTextareaStyle}
