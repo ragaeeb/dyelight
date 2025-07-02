@@ -1,0 +1,57 @@
+{
+    "name": "dyelight",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ragaeeb/dyelight.git"
+    },
+    "module": "./dist/index.js",
+    "version": "1.0.0",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "devDependencies": {
+        "@eslint/js": "^9.30.1",
+        "@types/bun": "^1.2.17",
+        "@types/react": "^19.1.8",
+        "@types/react-dom": "^19.1.6",
+        "eslint": "^9.30.1",
+        "eslint-config-prettier": "^10.1.5",
+        "eslint-plugin-perfectionist": "^4.15.0",
+        "eslint-plugin-prettier": "^5.5.1",
+        "eslint-plugin-react": "^7.37.5",
+        "globals": "^16.3.0",
+        "prettier": "^3.6.2",
+        "semantic-release": "^24.2.6",
+        "tsup": "^8.5.0",
+        "typescript-eslint": "^8.35.1"
+    },
+    "peerDependencies": {
+        "react": "^19.1.0",
+        "react-dom": "^19.1.0"
+    },
+    "type": "module",
+    "bugs": {
+        "url": "https://github.com/ragaeeb/dyelight/issues"
+    },
+    "description": "A lightweight TypeScript React component to allow highlighting characters in textareas.",
+    "homepage": "https://github.com/ragaeeb/dyelight",
+    "keywords": [
+        "highlight",
+        "textarea",
+        "multiline",
+        "input",
+        "forms",
+        "styling"
+    ],
+    "license": "MIT",
+    "scripts": {
+        "build": "tsup"
+    }
+}

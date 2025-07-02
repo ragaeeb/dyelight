@@ -1,0 +1,280 @@
+# DyeLight
+
+A lightweight TypeScript React component for highlighting characters in textareas with powerful text annotation capabilities.
+
+[![wakatime](https://wakatime.com/badge/user/a0b906ce-b8e7-4463-8bce-383238df6d4b/project/897368ef-62b9-48be-bba9-7c530f10e3da.svg)](https://wakatime.com/badge/user/a0b906ce-b8e7-4463-8bce-383238df6d4b/project/897368ef-62b9-48be-bba9-7c530f10e3da)
+![Bun](https://img.shields.io/badge/Bun-%23000000.svg?style=for-the-badge&logo=bun&logoColor=white)
+[![Node.js CI](https://github.com/ragaeeb/dyelight/actions/workflows/build.yml/badge.svg)](https://github.com/ragaeeb/dyelight/actions/workflows/build.yml)
+![GitHub License](https://img.shields.io/github/license/ragaeeb/dyelight)
+![GitHub Release](https://img.shields.io/github/v/release/ragaeeb/dyelight)
+[![Size](https://deno.bundlejs.com/badge?q=dyelight@latest&badge=detailed)](https://bundlejs.com/?q=dyelight%40latest)
+![typescript](https://badgen.net/badge/icon/typescript?icon=typescript&label&color=blue)
+![npm](https://img.shields.io/npm/dm/dyelight)
+![GitHub issues](https://img.shields.io/github/issues/ragaeeb/dyelight)
+![GitHub stars](https://img.shields.io/github/stars/ragaeeb/dyelight?style=social)
+[![NPM Version](https://img.shields.io/npm/v/dyelight)](https://www.npmjs.com/package/dyelight)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## Features
+
+- **Absolute Position Highlighting**: Highlight text using simple start/end positions across the entire text
+- **Multi-line Support**: Highlights automatically span across line breaks
+- **Line-level Highlighting**: Optional background highlighting for entire lines
+- **Pattern Matching**: Built-in support for regex and keyword highlighting
+- **Auto-resize**: Automatic textarea height adjustment based on content
+- **TypeScript**: Full TypeScript support with comprehensive type definitions
+- **Lightweight**: Minimal dependencies, optimized for performance
+- **Flexible Styling**: Support for CSS classes and inline styles
+
+## Installation
+
+```bash
+npm install dyelight
+```
+
+```bash
+yarn add dyelight
+```
+
+```bash
+pnpm add dyelight
+```
+
+## Basic Usage
+
+```tsx
+import React, { useState } from 'react';
+import { DyeLight, HighlightBuilder } from 'dyelight';
+
+function MyEditor() {
+    const [text, setText] = useState('Hello world\nThis is line 2');
+
+    // Highlight characters 0-5 (absolute positions)
+    const highlights = HighlightBuilder.ranges([
+        { start: 0, end: 5, className: 'bg-yellow-200' },
+        { start: 12, end: 24, className: 'bg-blue-200' },
+    ]);
+
+    return (
+        <DyeLight
+            value={text}
+            onChange={setText}
+            highlights={highlights}
+            className="w-full p-2 border rounded"
+            rows={4}
+        />
+    );
+}
+```
+
+## Advanced Usage
+
+### Pattern-based Highlighting
+
+```tsx
+import { DyeLight, HighlightBuilder } from 'dyelight';
+
+function CodeEditor() {
+    const [code, setCode] = useState(`
+function hello() {
+  const message = "Hello World";
+  console.log(message);
+}
+  `);
+
+    // Highlight JavaScript keywords
+    const keywordHighlights = HighlightBuilder.pattern(
+        code,
+        /\b(function|const|let|var|if|else|for|while)\b/g,
+        'text-blue-600 font-semibold',
+    );
+
+    // Highlight strings
+    const stringHighlights = HighlightBuilder.pattern(code, /"[^"]*"/g, 'text-green-600');
+
+    // Highlight specific words
+    const wordHighlights = HighlightBuilder.words(code, ['console', 'log'], 'text-purple-600');
+
+    return (
+        <DyeLight
+            value={code}
+            onChange={setCode}
+            highlights={[...keywordHighlights, ...stringHighlights, ...wordHighlights]}
+            className="font-mono text-sm"
+            enableAutoResize
+        />
+    );
+}
+```
+
+### Line Highlighting
+
+```tsx
+function ErrorHighlighter() {
+    const [text, setText] = useState('Line 1\nLine 2 with error\nLine 3');
+
+    // Highlight line 1 (0-indexed) with error styling
+    const lineHighlights = HighlightBuilder.lines([
+        { line: 1, className: 'bg-red-100' },
+        { line: 2, color: '#e8f5e8' }, // Or use direct color
+    ]);
+
+    return <DyeLight value={text} onChange={setText} lineHighlights={lineHighlights} />;
+}
+```
+
+### Character-level Highlighting
+
+```tsx
+function CharacterHighlighter() {
+    const [text, setText] = useState('Hello World');
+
+    // Highlight individual characters
+    const characterHighlights = HighlightBuilder.characters([
+        { index: 0, className: 'bg-red-200' }, // 'H'
+        { index: 6, className: 'bg-blue-200' }, // 'W'
+        { index: 10, style: { backgroundColor: 'yellow' } }, // 'd'
+    ]);
+
+    return <DyeLight value={text} onChange={setText} highlights={characterHighlights} />;
+}
+```
+
+### Using Refs
+
+```tsx
+function RefExample() {
+    const dyeLightRef = useRef<DyeLightRef>(null);
+    const [text, setText] = useState('');
+
+    const handleFocus = () => {
+        dyeLightRef.current?.focus();
+    };
+
+    const handleSelectAll = () => {
+        dyeLightRef.current?.select();
+    };
+
+    const handleGetValue = () => {
+        const value = dyeLightRef.current?.getValue();
+        console.log('Current value:', value);
+    };
+
+    return (
+        <div>
+            <DyeLight ref={dyeLightRef} value={text} onChange={setText} />
+            <button onClick={handleFocus}>Focus</button>
+            <button onClick={handleSelectAll}>Select All</button>
+            <button onClick={handleGetValue}>Get Value</button>
+        </div>
+    );
+}
+```
+
+## API Reference
+
+### DyeLight Props
+
+| Prop               | Type                               | Default     | Description                          |
+| ------------------ | ---------------------------------- | ----------- | ------------------------------------ |
+| `value`            | `string`                           | `undefined` | Controlled value                     |
+| `defaultValue`     | `string`                           | `''`        | Default value for uncontrolled usage |
+| `onChange`         | `(value: string) => void`          | `undefined` | Callback when value changes          |
+| `highlights`       | `CharacterRange[]`                 | `[]`        | Character range highlights           |
+| `lineHighlights`   | `{ [lineNumber: number]: string }` | `{}`        | Line-level highlights                |
+| `enableAutoResize` | `boolean`                          | `true`      | Enable auto-height adjustment        |
+| `className`        | `string`                           | `''`        | CSS class name                       |
+| `dir`              | `'ltr' \| 'rtl'`                   | `'ltr'`     | Text direction                       |
+| `rows`             | `number`                           | `4`         | Number of visible rows               |
+
+All standard textarea HTML attributes are also supported.
+
+### CharacterRange
+
+```typescript
+type CharacterRange = {
+    start: number; // Start position (inclusive)
+    end: number; // End position (exclusive)
+    className?: string; // CSS class name
+    style?: React.CSSProperties; // Inline styles
+};
+```
+
+### DyeLightRef Methods
+
+| Method                          | Description                |
+| ------------------------------- | -------------------------- |
+| `focus()`                       | Focus the textarea         |
+| `blur()`                        | Blur the textarea          |
+| `select()`                      | Select all text            |
+| `setSelectionRange(start, end)` | Set text selection         |
+| `getValue()`                    | Get current value          |
+| `setValue(value)`               | Set value programmatically |
+
+## HighlightBuilder Utilities
+
+### `HighlightBuilder.ranges(ranges)`
+
+Create highlights from character ranges.
+
+### `HighlightBuilder.pattern(text, pattern, className?, style?)`
+
+Highlight text matching a regex pattern.
+
+### `HighlightBuilder.words(text, words, className?, style?)`
+
+Highlight specific words.
+
+### `HighlightBuilder.characters(chars)`
+
+Highlight individual characters by index.
+
+### `HighlightBuilder.selection(start, end, className?, style?)`
+
+Create a single selection highlight.
+
+### `HighlightBuilder.lines(lines)`
+
+Create line-level highlights.
+
+## Styling
+
+DyeLight uses CSS-in-JS for core functionality but allows complete customization through CSS classes and inline styles.
+
+### Example CSS Classes
+
+```css
+.highlight-keyword {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    font-weight: 600;
+}
+
+.highlight-error {
+    background-color: #ffebee;
+    color: #c62828;
+    text-decoration: underline wavy red;
+}
+
+.highlight-string {
+    background-color: #e8f5e8;
+    color: #2e7d32;
+}
+```
+
+## Browser Support
+
+DyeLight supports all modern browsers including:
+
+- Chrome 60+
+- Firefox 60+
+- Safari 12+
+- Edge 79+
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+MIT © [Ragaeeb Haq](https://github.com/ragaeeb)
