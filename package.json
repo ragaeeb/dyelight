@@ -20,8 +20,8 @@
         "@biomejs/biome": "^2.3.5",
         "@storybook/addon-essentials": "^8.6.14",
         "@storybook/addon-interactions": "^8.6.14",
-        "@storybook/react": "^10.0.7",
-        "@storybook/react-vite": "^10.0.7",
+        "@storybook/react": "^8.6.14",
+        "@storybook/react-vite": "^8.6.14",
         "@storybook/test": "^8.6.14",
         "@testing-library/dom": "^10.4.1",
         "@testing-library/react": "^16.3.0",
@@ -29,8 +29,9 @@
         "@types/react": "^19.2.5",
         "@types/react-dom": "^19.2.3",
         "semantic-release": "^25.0.2",
-        "storybook": "^10.0.7",
-        "tsdown": "^0.16.4"
+        "storybook": "^8.6.14",
+        "tsdown": "^0.16.4",
+        "vite-tsconfig-paths": "^5.1.4"
     },
     "peerDependencies": {
         "react": "^19.2.0",
@@ -55,7 +56,7 @@
         "build": "tsdown",
         "format": "biome format --write .",
         "lint": "biome lint .",
-        "storybook": "storybook dev -p 6006",
+        "storybook": "storybook dev -p 6006 --no-open",
         "storybook:build": "storybook build",
         "test": "bun test --coverage --coverage-reporter=lcov"
     }
