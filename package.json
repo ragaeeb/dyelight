@@ -1,63 +1,60 @@
 {
-    "name": "dyelight",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ragaeeb/dyelight.git"
-    },
-    "module": "./dist/index.js",
-    "version": "1.0.3",
-    "types": "./dist/index.d.ts",
-    "exports": {
-        ".": {
-            "import": "./dist/index.js",
-            "types": "./dist/index.d.ts"
-        }
-    },
-    "files": [
-        "dist"
-    ],
-    "devDependencies": {
-        "@biomejs/biome": "^2.3.5",
-        "@storybook/addon-essentials": "^8.6.14",
-        "@storybook/addon-interactions": "^8.6.14",
-        "@storybook/react": "^8.6.14",
-        "@storybook/react-vite": "^8.6.14",
-        "@storybook/test": "^8.6.14",
-        "@testing-library/dom": "^10.4.1",
-        "@testing-library/react": "^16.3.0",
-        "@types/bun": "^1.3.2",
-        "@types/react": "^19.2.5",
-        "@types/react-dom": "^19.2.3",
-        "semantic-release": "^25.0.2",
-        "storybook": "^8.6.14",
-        "tsdown": "^0.16.4",
-        "vite-tsconfig-paths": "^5.1.4"
-    },
-    "peerDependencies": {
-        "react": "^19.2.0",
-        "react-dom": "^19.2.0"
-    },
-    "type": "module",
-    "bugs": {
-        "url": "https://github.com/ragaeeb/dyelight/issues"
-    },
-    "description": "A lightweight TypeScript React component to allow highlighting characters in textareas.",
-    "homepage": "https://github.com/ragaeeb/dyelight",
-    "keywords": [
-        "highlight",
-        "textarea",
-        "multiline",
-        "input",
-        "forms",
-        "styling"
-    ],
-    "license": "MIT",
-    "scripts": {
-        "build": "tsdown",
-        "format": "biome format --write .",
-        "lint": "biome lint .",
-        "storybook": "storybook dev -p 6006 --no-open",
-        "storybook:build": "storybook build",
-        "test": "bun test --coverage --coverage-reporter=lcov"
+  "name": "dyelight",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ragaeeb/dyelight.git"
+  },
+  "module": "./dist/index.js",
+  "version": "1.0.3",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     }
+  },
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.5",
+    "@storybook/addon-docs": "^10.0.7",
+    "@storybook/react-vite": "^10.0.7",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/bun": "^1.3.2",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "semantic-release": "^25.0.2",
+    "storybook": "^10.0.7",
+    "tsdown": "^0.16.4",
+    "vite-tsconfig-paths": "^5.1.4"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/ragaeeb/dyelight/issues"
+  },
+  "description": "A lightweight TypeScript React component to allow highlighting characters in textareas.",
+  "homepage": "https://github.com/ragaeeb/dyelight",
+  "keywords": [
+    "highlight",
+    "textarea",
+    "multiline",
+    "input",
+    "forms",
+    "styling"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "build": "tsdown",
+    "format": "biome format --write .",
+    "lint": "biome lint .",
+    "storybook": "storybook dev -p 6006 --no-open",
+    "storybook:build": "storybook build",
+    "test": "bun test --coverage --coverage-reporter=lcov"
+  }
 }

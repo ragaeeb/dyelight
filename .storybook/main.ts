@@ -3,13 +3,10 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 
 const config: StorybookConfig = {
     stories: ['../src/**/*.stories.@(js|jsx|ts|tsx)'],
-    addons: ['@storybook/addon-essentials', '@storybook/addon-interactions'],
+    addons: ['@storybook/addon-docs'],
     framework: {
         name: '@storybook/react-vite',
         options: {},
-    },
-    docs: {
-        autodocs: 'tag',
     },
     async viteFinal(config) {
         config.plugins = config.plugins ?? [];
