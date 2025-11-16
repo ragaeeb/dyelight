@@ -2,6 +2,19 @@ import { useCallback, useState } from 'react';
 
 import { autoResize } from '@/domUtils';
 
+export const createAutoResizeHandler = (
+    enableAutoResize: boolean,
+    setTextareaHeight: (height: number | undefined) => void,
+    resize: (element: HTMLTextAreaElement) => void = autoResize,
+) => {
+    return (element: HTMLTextAreaElement) => {
+        if (!enableAutoResize) return;
+
+        resize(element);
+        setTextareaHeight(element.scrollHeight);
+    };
+};
+
 /**
  * Hook for managing textarea auto-resize functionality
  */
@@ -12,13 +25,8 @@ export const useAutoResize = (enableAutoResize: boolean) => {
      * Handles automatic resizing of the textarea based on content
      */
     const handleAutoResize = useCallback(
-        (element: HTMLTextAreaElement) => {
-            if (!enableAutoResize) return;
-
-            autoResize(element);
-            setTextareaHeight(element.scrollHeight);
-        },
-        [enableAutoResize],
+        createAutoResizeHandler(enableAutoResize, setTextareaHeight),
+        [enableAutoResize, setTextareaHeight],
     );
 
     return {

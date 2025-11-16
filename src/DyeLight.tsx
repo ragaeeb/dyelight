@@ -24,7 +24,11 @@ import { isColorValue } from './textUtils';
 /**
  * Creates a line element with optional highlighting
  */
-const createLineElement = (content: React.ReactNode, lineIndex: number, lineHighlight?: string): React.ReactElement => {
+export const createLineElement = (
+    content: React.ReactNode,
+    lineIndex: number,
+    lineHighlight?: string,
+): React.ReactElement => {
     if (!lineHighlight) {
         return <div key={lineIndex}>{content}</div>;
     }
@@ -44,7 +48,7 @@ const createLineElement = (content: React.ReactNode, lineIndex: number, lineHigh
 /**
  * Renders a single line with character-level highlights and optional line-level highlighting
  */
-const renderHighlightedLine = (
+export const renderHighlightedLine = (
     line: string,
     lineIndex: number,
     ranges: Array<{ className?: string; end: number; start: number; style?: React.CSSProperties }>,

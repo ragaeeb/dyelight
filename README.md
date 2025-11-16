@@ -26,6 +26,32 @@ A lightweight TypeScript React component for highlighting characters in textarea
 - **TypeScript**: Full TypeScript support with comprehensive type definitions
 - **Lightweight**: Minimal dependencies, optimized for performance
 - **Flexible Styling**: Support for CSS classes and inline styles
+- **Storybook Playground**: Explore the component interactively with the bundled Storybook setup
+
+## Development
+
+This project uses [Bun](https://bun.sh/) for dependency management and scripts.
+
+```bash
+bun install
+```
+
+### Tooling
+
+- **Biome** – linting and formatting use the latest Biome recommended rules defined in `biome.json`.
+- **tsdown** – builds rely on the upstream `tsdown` CLI configured in `tsdown.config.ts`.
+- **Storybook** – interactive documentation lives under `.storybook` with stories in `src/**/*.stories.tsx`.
+- **Testing Library** – unit tests rely on the latest `@testing-library/react` and `@testing-library/dom` helpers.
+
+### Available scripts
+
+- `bun run build` – bundle the library with `tsdown` and emit declarations.
+- `bun run test` – execute the Bun-powered unit tests with coverage for every hook and the `DyeLight` component.
+- `bun run storybook` – start Storybook locally at <http://localhost:6006> to demo the component.
+- `bun run storybook:build` – produce a static Storybook build.
+- `bun run lint` / `bun run format` – lint and format the project with Biome.
+
+Storybook ships with example stories under `src/DyeLight.stories.tsx` that showcase auto-resize, line-level highlights, and interactive editing.
 
 ## Installation
 
@@ -275,6 +301,10 @@ DyeLight supports all modern browsers including:
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Install dependencies with `bun install`.
+2. Run `bun run lint` and `bun test` to ensure code style and tests pass.
+3. Use `bun run storybook` to verify UI changes where relevant.
 
 ## License
 

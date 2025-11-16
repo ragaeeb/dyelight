@@ -1,5 +1,70 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+export const syncValueWithDOM = (
+    textarea: HTMLTextAreaElement | null,
+    currentValue: string,
+    isControlled: boolean,
+    setInternalValue: (value: string) => void,
+    onChange?: (value: string) => void,
+) => {
+    if (!textarea) return;
+
+    const domValue = textarea.value;
+    if (domValue !== currentValue) {
+        if (!isControlled) {
+            setInternalValue(domValue);
+        }
+        onChange?.(domValue);
+    }
+};
+
+export const handleChangeValue = (
+    newValue: string,
+    isControlled: boolean,
+    setInternalValue: (value: string) => void,
+    onChange?: (value: string) => void,
+) => {
+    if (!isControlled) {
+        setInternalValue(newValue);
+    }
+
+    onChange?.(newValue);
+};
+
+export const handleInputValue = (
+    newValue: string,
+    currentValue: string,
+    isControlled: boolean,
+    setInternalValue: (value: string) => void,
+    onChange?: (value: string) => void,
+) => {
+    if (newValue === currentValue) return;
+
+    if (!isControlled) {
+        setInternalValue(newValue);
+    }
+
+    onChange?.(newValue);
+};
+
+export const applySetValue = (
+    textarea: HTMLTextAreaElement | null,
+    newValue: string,
+    isControlled: boolean,
+    setInternalValue: (value: string) => void,
+    onChange?: (value: string) => void,
+) => {
+    if (!textarea) return;
+
+    textarea.value = newValue;
+
+    if (!isControlled) {
+        setInternalValue(newValue);
+    }
+
+    onChange?.(newValue);
+};
+
 /**
  * Hook for managing textarea value state and synchronization
  * Handles both controlled and uncontrolled modes, plus programmatic changes
@@ -8,111 +73,60 @@ export const useTextareaValue = (value?: string, defaultValue = '', onChange?: (
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [internalValue, setInternalValue] = useState(value ?? defaultValue);
 
-    const currentValue = value !== undefined ? value : internalValue;
+    const isControlled = value !== undefined;
+    const currentValue = isControlled ? value : internalValue;
 
-    /**
-     * Syncs the current value with the actual DOM value
-     * This is crucial for handling programmatic value changes
-     */
-    const syncValueWithDOM = useCallback(() => {
-        if (textareaRef.current) {
-            const domValue = textareaRef.current.value;
-            if (domValue !== currentValue) {
-                if (value === undefined) {
-                    // Uncontrolled mode - update internal state
-                    setInternalValue(domValue);
-                }
-                // Notify parent of the change
-                onChange?.(domValue);
-            }
-        }
-    }, [currentValue, value, onChange]);
+    const syncValueWithDOMCallback = useCallback(() => {
+        syncValueWithDOM(textareaRef.current, currentValue, isControlled, setInternalValue, onChange);
+    }, [currentValue, isControlled, onChange]);
 
-    /**
-     * Handles textarea value changes
-     */
     const handleChange = useCallback(
         (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-            const newValue = e.target.value;
-
-            if (value === undefined) {
-                setInternalValue(newValue);
-            }
-
-            onChange?.(newValue);
+            handleChangeValue(e.target.value, isControlled, setInternalValue, onChange);
         },
-        [value, onChange],
+        [isControlled, onChange],
     );
 
-    /**
-     * Handles input events to catch programmatic changes
-     */
     const handleInput = useCallback(
         (e: React.FormEvent<HTMLTextAreaElement>) => {
-            const newValue = e.currentTarget.value;
-
-            // Check if this is a programmatic change (value differs from our state)
-            if (newValue !== currentValue) {
-                if (value === undefined) {
-                    setInternalValue(newValue);
-                }
-                onChange?.(newValue);
-            }
+            handleInputValue(e.currentTarget.value, currentValue, isControlled, setInternalValue, onChange);
         },
-        [currentValue, value, onChange],
+        [currentValue, isControlled, onChange],
     );
 
-    /**
-     * Programmatically sets the textarea value
-     */
     const setValue = useCallback(
         (newValue: string) => {
-            if (textareaRef.current) {
-                textareaRef.current.value = newValue;
-
-                // Update internal state
-                if (value === undefined) {
-                    setInternalValue(newValue);
-                }
-
-                // Notify parent
-                onChange?.(newValue);
-            }
+            applySetValue(textareaRef.current, newValue, isControlled, setInternalValue, onChange);
         },
-        [value, onChange],
+        [isControlled, onChange],
     );
 
-    // Sync with DOM value on mount and when external changes occur
     useEffect(() => {
-        syncValueWithDOM();
-    }, [syncValueWithDOM]);
+        syncValueWithDOMCallback();
+    }, [syncValueWithDOMCallback]);
 
-    // Handle controlled value changes
     useEffect(() => {
-        if (value !== undefined && textareaRef.current && textareaRef.current.value !== value) {
+        if (isControlled && textareaRef.current && textareaRef.current.value !== value) {
             textareaRef.current.value = value;
         }
-    }, [value]);
+    }, [isControlled, value]);
 
-    // Use a MutationObserver to detect programmatic value changes
     useEffect(() => {
         const textarea = textareaRef.current;
         if (!textarea) return;
 
         const observer = new MutationObserver(() => {
-            syncValueWithDOM();
+            syncValueWithDOMCallback();
         });
 
-        // Watch for attribute changes (like value attribute)
         observer.observe(textarea, {
             attributeFilter: ['value'],
             attributes: true,
         });
 
-        // Also use a polling mechanism as a fallback
         const intervalId = setInterval(() => {
             if (textarea.value !== currentValue) {
-                syncValueWithDOM();
+                syncValueWithDOMCallback();
             }
         }, 100);
 
@@ -120,10 +134,10 @@ export const useTextareaValue = (value?: string, defaultValue = '', onChange?: (
             observer.disconnect();
             clearInterval(intervalId);
         };
-    }, [currentValue, syncValueWithDOM]);
+    }, [currentValue, syncValueWithDOMCallback]);
 
     return {
-        currentValue,
+        currentValue: currentValue ?? '',
         handleChange,
         handleInput,
         setValue,
