@@ -27,6 +27,19 @@ export default meta;
 type Story = StoryObj<typeof DyeLight>;
 
 export const Playground: Story = {
+    args: {
+        highlights: [{
+            "className": "highlight",
+            "end": 30,
+            "start": 28
+        }],
+
+        lineHighlights: {
+            "0": "rgba(255, 235, 0, 0.35)",
+            "1": "line-accent"
+        }
+    },
+
     render: (args) => {
         const [value, setValue] = useState(args.defaultValue ?? '');
 
@@ -40,7 +53,7 @@ export const Playground: Story = {
                 }}
             />
         );
-    },
+    }
 };
 
 export const AutoResizeDisabled: Story = {
