@@ -1,25 +1,27 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 import { HighlightBuilder } from './builder';
 import { DyeLight } from './DyeLight';
 
 const meta: Meta<typeof DyeLight> = {
-    title: 'Components/DyeLight',
-    component: DyeLight,
-    parameters: {
-        layout: 'centered',
-    },
     args: {
-        rows: 6,
         defaultValue: 'Type in the textarea to see highlights in action.',
-        highlights: HighlightBuilder.pattern('Type in the textarea to see highlights in action.', /highlight/gi, 'highlight'),
+        highlights: HighlightBuilder.pattern(
+            'Type in the textarea to see highlights in action.',
+            /highlight/gi,
+            'highlight',
+        ),
         lineHighlights: HighlightBuilder.lines([
-            { line: 0, color: 'rgba(255, 235, 59, 0.35)' },
-            { line: 1, className: 'line-accent' },
+            { color: 'rgba(255, 235, 59, 0.35)', line: 0 },
+            { className: 'line-accent', line: 1 },
         ]),
-        style: { width: '100%', maxWidth: 480 },
+        rows: 6,
+        style: { maxWidth: 480, width: '100%' },
     },
+    component: DyeLight,
+    parameters: { layout: 'centered' },
+    title: 'Components/DyeLight',
 };
 
 export default meta;
@@ -28,16 +30,9 @@ type Story = StoryObj<typeof DyeLight>;
 
 export const Playground: Story = {
     args: {
-        highlights: [{
-            "className": "highlight",
-            "end": 30,
-            "start": 28
-        }],
+        highlights: [{ className: 'highlight', end: 30, start: 28 }],
 
-        lineHighlights: {
-            "0": "rgba(255, 235, 0, 0.35)",
-            "1": "line-accent"
-        }
+        lineHighlights: { '0': 'rgba(255, 235, 0, 0.35)', '1': 'line-accent' },
     },
 
     render: (args) => {
@@ -53,12 +48,7 @@ export const Playground: Story = {
                 }}
             />
         );
-    }
-};
-
-export const AutoResizeDisabled: Story = {
-    args: {
-        enableAutoResize: false,
-        rows: 4,
     },
 };
+
+export const AutoResizeDisabled: Story = { args: { enableAutoResize: false, rows: 4 } };

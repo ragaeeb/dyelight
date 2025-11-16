@@ -40,7 +40,7 @@ bun install
 
 ### Tooling
 
-- **Biome** – linting and formatting use the latest Biome recommended rules defined in `biome.json`.
+- **Biome** – linting and formatting use the latest Biome-recommended rules defined in `biome.json`.
 - **tsdown** – builds rely on the upstream `tsdown` CLI configured in `tsdown.config.ts`.
 - **Storybook** – interactive documentation lives under `.storybook` with stories in `src/**/*.stories.tsx`.
 - **Testing Library** – unit tests rely on the latest `@testing-library/react` and `@testing-library/dom` helpers.

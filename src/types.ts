@@ -6,7 +6,7 @@
  * These types provide comprehensive type safety and IntelliSense support.
  */
 
-import React from 'react';
+import type React from 'react';
 
 /**
  * Represents a character range to highlight in the entire text using absolute positions

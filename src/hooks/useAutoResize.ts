@@ -8,7 +8,9 @@ export const createAutoResizeHandler = (
     resize: (element: HTMLTextAreaElement) => void = autoResize,
 ) => {
     return (element: HTMLTextAreaElement) => {
-        if (!enableAutoResize) return;
+        if (!enableAutoResize) {
+            return;
+        }
 
         resize(element);
         setTextareaHeight(element.scrollHeight);
@@ -25,12 +27,15 @@ export const useAutoResize = (enableAutoResize: boolean) => {
      * Handles automatic resizing of the textarea based on content
      */
     const handleAutoResize = useCallback(
-        createAutoResizeHandler(enableAutoResize, setTextareaHeight),
-        [enableAutoResize, setTextareaHeight],
+        (element: HTMLTextAreaElement) => {
+            if (!enableAutoResize) {
+                return;
+            }
+            autoResize(element);
+            setTextareaHeight(element.scrollHeight);
+        },
+        [enableAutoResize],
     );
 
-    return {
-        handleAutoResize,
-        textareaHeight,
-    };
+    return { handleAutoResize, textareaHeight };
 };

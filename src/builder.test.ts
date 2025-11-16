@@ -62,10 +62,7 @@ describe('builder', () => {
                 { className: 'warning-line', line: 2 },
             ]);
 
-            expect(result).toEqual({
-                0: 'error-line',
-                2: 'warning-line',
-            });
+            expect(result).toEqual({ 0: 'error-line', 2: 'warning-line' });
         });
 
         it('should create line highlights with color', () => {
@@ -74,26 +71,19 @@ describe('builder', () => {
                 { color: 'red', line: 3 },
             ]);
 
-            expect(result).toEqual({
-                1: '#ffff00',
-                3: 'red',
-            });
+            expect(result).toEqual({ 1: '#ffff00', 3: 'red' });
         });
 
         it('should prefer className over color when both are provided', () => {
             const result = HighlightBuilder.lines([{ className: 'my-class', color: '#ff0000', line: 0 }]);
 
-            expect(result).toEqual({
-                0: 'my-class',
-            });
+            expect(result).toEqual({ 0: 'my-class' });
         });
 
         it('should use color when className is not provided', () => {
             const result = HighlightBuilder.lines([{ color: 'blue', line: 1 }]);
 
-            expect(result).toEqual({
-                1: 'blue',
-            });
+            expect(result).toEqual({ 1: 'blue' });
         });
 
         it('should handle empty array', () => {
@@ -104,9 +94,7 @@ describe('builder', () => {
         it('should use empty string when neither className nor color is provided', () => {
             const result = HighlightBuilder.lines([{ line: 0 }]);
 
-            expect(result).toEqual({
-                0: '',
-            });
+            expect(result).toEqual({ 0: '' });
         });
 
         it('should handle multiple lines with mixed configurations', () => {
@@ -117,12 +105,7 @@ describe('builder', () => {
                 { className: 'class3', color: 'ignored', line: 3 },
             ]);
 
-            expect(result).toEqual({
-                0: 'class1',
-                1: 'yellow',
-                2: '',
-                3: 'class3',
-            });
+            expect(result).toEqual({ 0: 'class1', 1: 'yellow', 2: '', 3: 'class3' });
         });
     });
 

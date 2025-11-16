@@ -4,7 +4,9 @@ export const syncScrollPositions = (
     textarea: Pick<HTMLTextAreaElement, 'scrollLeft' | 'scrollTop'> | null,
     highlightLayer: Pick<HTMLDivElement, 'scrollLeft' | 'scrollTop'> | null,
 ) => {
-    if (!textarea || !highlightLayer) return;
+    if (!textarea || !highlightLayer) {
+        return;
+    }
 
     const { scrollLeft, scrollTop } = textarea;
     highlightLayer.scrollTop = scrollTop;
@@ -16,7 +18,9 @@ export const syncHighlightStyles = (
     highlightLayer: HTMLDivElement | null,
     computeStyle: (element: Element) => CSSStyleDeclaration = getComputedStyle,
 ) => {
-    if (!textarea || !highlightLayer) return;
+    if (!textarea || !highlightLayer) {
+        return;
+    }
 
     const computedStyle = computeStyle(textarea);
 
@@ -43,9 +47,5 @@ export const useHighlightSync = () => {
         syncHighlightStyles(textareaRef.current, highlightLayerRef.current);
     }, []);
 
-    return {
-        highlightLayerRef,
-        syncScroll,
-        syncStyles,
-    };
+    return { highlightLayerRef, syncScroll, syncStyles };
 };

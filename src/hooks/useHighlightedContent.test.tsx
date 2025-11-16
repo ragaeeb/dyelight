@@ -2,9 +2,7 @@ import { describe, expect, it, mock } from 'bun:test';
 import type { CharacterRange } from '@/types';
 
 await mock.restore();
-await mock.module('react', () => ({
-    useMemo: <T,>(factory: () => T) => factory(),
-}));
+await mock.module('react', () => ({ useMemo: <T,>(factory: () => T) => factory() }));
 
 const { computeHighlightedContent, useHighlightedContent } = await import('./useHighlightedContent');
 
@@ -14,13 +12,13 @@ describe('computeHighlightedContent', () => {
         lineIndex: number,
         ranges: Array<{ className?: string; end: number; start: number; style?: React.CSSProperties }>,
         lineHighlight?: string,
-    ) => ({ line, lineIndex, lineHighlight, ranges });
+    ) => ({ line, lineHighlight, lineIndex, ranges });
 
     it('groups highlights by line and provides range metadata', () => {
         const text = 'Hello world\nSecond line';
         const highlights: CharacterRange[] = [
-            { start: 0, end: 5, className: 'primary' },
-            { start: 12, end: 18, className: 'secondary' },
+            { className: 'primary', end: 5, start: 0 },
+            { className: 'secondary', end: 18, start: 12 },
         ];
         const lineHighlights = { 1: 'line-accent' } satisfies Record<number, string>;
 
@@ -46,7 +44,7 @@ describe('computeHighlightedContent', () => {
 
 describe('useHighlightedContent', () => {
     it('returns rendered highlighted lines', () => {
-        const highlights: CharacterRange[] = [{ start: 0, end: 4, className: 'tag' }];
+        const highlights: CharacterRange[] = [{ className: 'tag', end: 4, start: 0 }];
         const lineHighlights = {} as Record<number, string>;
         const renderLine = (
             line: string,

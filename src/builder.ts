@@ -6,7 +6,7 @@
  * highlights, line-level highlights, pattern-based highlights, and more.
  */
 
-import React from 'react';
+import type React from 'react';
 
 /**
  * Utility functions for building highlight objects for the DyeLight component
@@ -31,12 +31,7 @@ export const HighlightBuilder = {
      * ```
      */
     characters: (chars: Array<{ className?: string; index: number; style?: React.CSSProperties }>) => {
-        return chars.map(({ className, index, style }) => ({
-            className,
-            end: index + 1,
-            start: index,
-            style,
-        }));
+        return chars.map(({ className, index, style }) => ({ className, end: index + 1, start: index, style }));
     },
 
     /**
@@ -91,12 +86,7 @@ export const HighlightBuilder = {
         const regex = typeof pattern === 'string' ? new RegExp(pattern, 'g') : new RegExp(pattern.source, 'g');
         const matches = Array.from(text.matchAll(regex));
 
-        return matches.map((match) => ({
-            className,
-            end: match.index! + match[0].length,
-            start: match.index!,
-            style,
-        }));
+        return matches.map((match) => ({ className, end: match.index! + match[0].length, start: match.index!, style }));
     },
 
     /**
@@ -118,12 +108,7 @@ export const HighlightBuilder = {
      * ```
      */
     ranges: (ranges: Array<{ className?: string; end: number; start: number; style?: React.CSSProperties }>) => {
-        return ranges.map(({ className, end, start, style }) => ({
-            className,
-            end,
-            start,
-            style,
-        }));
+        return ranges.map(({ className, end, start, style }) => ({ className, end, start, style }));
     },
 
     /**

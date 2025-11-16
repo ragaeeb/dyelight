@@ -2,22 +2,23 @@ import { describe, expect, it, mock } from 'bun:test';
 
 type UseStateSetter<T> = (value: T) => void;
 
-type MockedReactState<T> = {
-    lastSet?: T;
-};
+type MockedReactState<T> = { lastSet?: T };
 
 const state: MockedReactState<number | undefined> = {};
 
 await mock.restore();
 await mock.module('react', () => ({
-    useState: (initial: number | undefined): [number | undefined, UseStateSetter<number | undefined>] => {
-        state.lastSet = initial;
-        return [initial, (value: number | undefined) => {
-            state.lastSet = value;
-        }];
-    },
     useCallback: <T extends (...args: never[]) => unknown>(fn: T) => fn,
     useRef: <T,>(value: T) => ({ current: value }),
+    useState: (initial: number | undefined): [number | undefined, UseStateSetter<number | undefined>] => {
+        state.lastSet = initial;
+        return [
+            initial,
+            (value: number | undefined) => {
+                state.lastSet = value;
+            },
+        ];
+    },
 }));
 
 const { createAutoResizeHandler, useAutoResize } = await import('./useAutoResize');

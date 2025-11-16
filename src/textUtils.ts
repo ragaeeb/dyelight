@@ -30,7 +30,7 @@ export const getLinePositions = (text: string) => {
         position += line.length + (index < lines.length - 1 ? 1 : 0); // +1 for \n except last line
     });
 
-    return { lines, lineStarts };
+    return { lineStarts, lines };
 };
 
 /**
@@ -51,10 +51,7 @@ export const getLinePositions = (text: string) => {
 export const absoluteToLinePos = (absolutePos: number, lineStarts: number[]) => {
     for (let i = lineStarts.length - 1; i >= 0; i--) {
         if (absolutePos >= lineStarts[i]) {
-            return {
-                char: absolutePos - lineStarts[i],
-                line: i,
-            };
+            return { char: absolutePos - lineStarts[i], line: i };
         }
     }
     return { char: 0, line: 0 };

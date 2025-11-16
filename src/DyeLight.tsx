@@ -1,13 +1,12 @@
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
-
-import type { DyeLightProps, DyeLightRef } from './types';
-
+import type React from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 import { useAutoResize } from './hooks/useAutoResize';
 import { useHighlightedContent } from './hooks/useHighlightedContent';
 import { useHighlightSync } from './hooks/useHighlightSync';
 import { useTextareaValue } from './hooks/useTextareaValue';
 import { DEFAULT_BASE_STYLE, DEFAULT_CONTAINER_STYLE, DEFAULT_HIGHLIGHT_LAYER_STYLE } from './styles';
 import { isColorValue } from './textUtils';
+import type { DyeLightProps, DyeLightRef } from './types';
 
 /**
  * @fileoverview DyeLight - A React textarea component with advanced text highlighting capabilities
@@ -84,7 +83,7 @@ export const renderHighlightedLine = (
         if (clampedEnd > clampedStart) {
             const highlightedText = line.slice(clampedStart, clampedEnd);
             result.push(
-                <span className={className} key={`highlight-${lineIndex}-${idx}`} style={rangeStyle}>
+                <span className={className} key={`highlight-${lineIndex}-${idx.toString()}`} style={rangeStyle}>
                     {highlightedText}
                 </span>,
             );

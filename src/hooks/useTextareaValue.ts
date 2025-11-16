@@ -7,7 +7,9 @@ export const syncValueWithDOM = (
     setInternalValue: (value: string) => void,
     onChange?: (value: string) => void,
 ) => {
-    if (!textarea) return;
+    if (!textarea) {
+        return;
+    }
 
     const domValue = textarea.value;
     if (domValue !== currentValue) {
@@ -38,7 +40,9 @@ export const handleInputValue = (
     setInternalValue: (value: string) => void,
     onChange?: (value: string) => void,
 ) => {
-    if (newValue === currentValue) return;
+    if (newValue === currentValue) {
+        return;
+    }
 
     if (!isControlled) {
         setInternalValue(newValue);
@@ -54,7 +58,9 @@ export const applySetValue = (
     setInternalValue: (value: string) => void,
     onChange?: (value: string) => void,
 ) => {
-    if (!textarea) return;
+    if (!textarea) {
+        return;
+    }
 
     textarea.value = newValue;
 
@@ -113,16 +119,15 @@ export const useTextareaValue = (value?: string, defaultValue = '', onChange?: (
 
     useEffect(() => {
         const textarea = textareaRef.current;
-        if (!textarea) return;
+        if (!textarea) {
+            return;
+        }
 
         const observer = new MutationObserver(() => {
             syncValueWithDOMCallback();
         });
 
-        observer.observe(textarea, {
-            attributeFilter: ['value'],
-            attributes: true,
-        });
+        observer.observe(textarea, { attributeFilter: ['value'], attributes: true });
 
         const intervalId = setInterval(() => {
             if (textarea.value !== currentValue) {
@@ -136,11 +141,5 @@ export const useTextareaValue = (value?: string, defaultValue = '', onChange?: (
         };
     }, [currentValue, syncValueWithDOMCallback]);
 
-    return {
-        currentValue: currentValue ?? '',
-        handleChange,
-        handleInput,
-        setValue,
-        textareaRef,
-    };
+    return { currentValue: currentValue, handleChange, handleInput, setValue, textareaRef };
 };

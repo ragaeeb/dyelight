@@ -2,16 +2,16 @@ import { describe, expect, it, mock } from 'bun:test';
 
 await mock.restore();
 await mock.module('react', () => ({
-    useRef: <T,>(value: T) => ({ current: value }),
     useCallback: <T extends (...args: never[]) => unknown>(fn: T) => fn,
+    useRef: <T,>(value: T) => ({ current: value }),
 }));
 
 const { syncScrollPositions, syncHighlightStyles, useHighlightSync } = await import('./useHighlightSync');
 
 describe('syncScrollPositions', () => {
     it('aligns scroll offsets', () => {
-        const textarea = { scrollTop: 45, scrollLeft: 12 } as unknown as HTMLTextAreaElement;
-        const highlight = { scrollTop: 0, scrollLeft: 0 } as unknown as HTMLDivElement;
+        const textarea = { scrollLeft: 12, scrollTop: 45 } as unknown as HTMLTextAreaElement;
+        const highlight = { scrollLeft: 0, scrollTop: 0 } as unknown as HTMLDivElement;
 
         syncScrollPositions(textarea, highlight);
 
@@ -20,7 +20,7 @@ describe('syncScrollPositions', () => {
     });
 
     it('does nothing when refs are missing', () => {
-        const highlight = { scrollTop: 0, scrollLeft: 0 } as unknown as HTMLDivElement;
+        const highlight = { scrollLeft: 0, scrollTop: 0 } as unknown as HTMLDivElement;
         syncScrollPositions(null, highlight);
         expect(highlight.scrollTop).toBe(0);
         expect(highlight.scrollLeft).toBe(0);

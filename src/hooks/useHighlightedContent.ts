@@ -1,8 +1,6 @@
 import { useMemo } from 'react';
-
-import type { CharacterRange } from '@/types';
-
 import { absoluteToLinePos, getLinePositions } from '@/textUtils';
+import type { CharacterRange } from '@/types';
 
 export const computeHighlightedContent = (
     text: string,
@@ -18,12 +16,7 @@ export const computeHighlightedContent = (
     const { lines, lineStarts } = getLinePositions(text);
 
     const highlightsByLine: {
-        [lineIndex: number]: Array<{
-            className?: string;
-            end: number;
-            start: number;
-            style?: React.CSSProperties;
-        }>;
+        [lineIndex: number]: Array<{ className?: string; end: number; start: number; style?: React.CSSProperties }>;
     } = {};
 
     highlights.forEach((highlight) => {

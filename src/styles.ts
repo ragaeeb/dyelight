@@ -7,7 +7,7 @@
  * its highlight overlay.
  */
 
-import React from 'react';
+import type React from 'react';
 
 /**
  * Default styles for the main container element that wraps the entire component

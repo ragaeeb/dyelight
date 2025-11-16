@@ -17,7 +17,7 @@
 
 ## Coding conventions
 - Write TypeScript (ES modules) with React function components.
-- Keep hooks pure, memoise derived values where possible, and avoid side effects in render.
+- Keep hooks pure, memoize derived values where possible, and avoid side effects in render.
 - Prefer descriptive prop names and exhaustive object literals; avoid optional chaining in tight loops.
 - Maintain comprehensive unit tests alongside code changes. When modifying hooks/components, update the paired test file.
 - Use Testing Library queries (e.g., `screen.getByRole`) and Bun's `mock.module` when stubbing modules.
