@@ -2,7 +2,7 @@
 
 A lightweight TypeScript React component for highlighting characters in textareas with powerful text annotation capabilities.
 
-[Demo](https://dyelight.netlify.app)
+[Demo](https://dyelight.vercel.app)
 
 [![wakatime](https://wakatime.com/badge/user/a0b906ce-b8e7-4463-8bce-383238df6d4b/project/897368ef-62b9-48be-bba9-7c530f10e3da.svg)](https://wakatime.com/badge/user/a0b906ce-b8e7-4463-8bce-383238df6d4b/project/897368ef-62b9-48be-bba9-7c530f10e3da)
 [![codecov](https://codecov.io/gh/ragaeeb/dyelight/graph/badge.svg?token=7VETE1WNMP)](https://codecov.io/gh/ragaeeb/dyelight)
@@ -16,7 +16,7 @@ A lightweight TypeScript React component for highlighting characters in textarea
 ![GitHub issues](https://img.shields.io/github/issues/ragaeeb/dyelight)
 ![GitHub stars](https://img.shields.io/github/stars/ragaeeb/dyelight?style=social)
 [![NPM Version](https://img.shields.io/npm/v/dyelight)](https://www.npmjs.com/package/dyelight)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Vercel Deploy](https://deploy-badge.vercel.app/vercel/dyelight)](https://dyelight.vercel.app)
 
 ## Features
 
