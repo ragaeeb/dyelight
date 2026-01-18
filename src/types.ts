@@ -121,4 +121,6 @@ export type DyeLightRef = {
     setSelectionRange: (start: number, end: number) => void;
     /** Sets the value of the textarea programmatically */
     setValue: (value: string) => void;
+    /** Scrolls the character position into view with an optional pixel offset */
+    scrollToPosition: (pos: number, offset?: number, behavior?: ScrollBehavior) => void;
 };

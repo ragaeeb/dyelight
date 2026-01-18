@@ -50,7 +50,13 @@ export const createLineElement = (
 export const renderHighlightedLine = (
     line: string,
     lineIndex: number,
-    ranges: Array<{ className?: string; end: number; start: number; style?: React.CSSProperties }>,
+    ranges: Array<{
+        absoluteStart: number;
+        className?: string;
+        end: number;
+        start: number;
+        style?: React.CSSProperties;
+    }>,
     lineHighlight?: string,
 ): React.ReactElement => {
     if (ranges.length === 0) {
@@ -83,7 +89,12 @@ export const renderHighlightedLine = (
         if (clampedEnd > clampedStart) {
             const highlightedText = line.slice(clampedStart, clampedEnd);
             result.push(
-                <span className={className} key={`highlight-${lineIndex}-${idx.toString()}`} style={rangeStyle}>
+                <span
+                    className={className}
+                    key={`highlight-${lineIndex}-${idx.toString()}`}
+                    style={rangeStyle}
+                    data-range-start={range.absoluteStart}
+                >
                     {highlightedText}
                 </span>,
             );
@@ -177,6 +188,8 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
         );
 
         // Scroll handler with ref binding
+        useEffect(() => {}, []);
+
         const handleScroll = useCallback(() => {
             syncScroll(textareaRef);
         }, [syncScroll, textareaRef]);
@@ -188,11 +201,34 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
                 blur: () => textareaRef.current?.blur(),
                 focus: () => textareaRef.current?.focus(),
                 getValue: () => currentValue,
+                scrollToPosition: (pos: number, offset = 40, behavior: ScrollBehavior = 'auto') => {
+                    if (highlightLayerRef.current && textareaRef.current) {
+                        const span = highlightLayerRef.current.querySelector(`[data-range-start="${pos.toString()}"]`);
+                        if (span instanceof HTMLElement) {
+                            const textarea = textareaRef.current;
+                            const spanTop = span.offsetTop;
+                            const spanHeight = span.offsetHeight;
+                            const scrollTop = textarea.scrollTop;
+                            const clientHeight = textarea.clientHeight;
+
+                            // Check if the element is already comfortably visible
+                            // We define "comfortably visible" as the start being in the viewport
+                            // and not too close to the edge (unless it's top/bot).
+                            const isStartVisible = spanTop >= scrollTop && spanTop <= scrollTop + clientHeight - offset;
+
+                            if (behavior === 'smooth') {
+                                textarea.scrollTo({ behavior: 'smooth', top: spanTop - offset });
+                            } else {
+                                textarea.scrollTop = spanTop - offset;
+                            }
+                        }
+                    }
+                },
                 select: () => textareaRef.current?.select(),
                 setSelectionRange: (start: number, end: number) => textareaRef.current?.setSelectionRange(start, end),
                 setValue: setValueWithResize,
             }),
-            [currentValue, setValueWithResize],
+            [currentValue, setValueWithResize, highlightLayerRef, textareaRef],
         );
 
         // Sync styles and handle auto-resize on value changes

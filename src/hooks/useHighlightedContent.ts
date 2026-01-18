@@ -9,14 +9,26 @@ export const computeHighlightedContent = (
     renderHighlightedLine: (
         line: string,
         lineIndex: number,
-        ranges: Array<{ className?: string; end: number; start: number; style?: React.CSSProperties }>,
+        ranges: Array<{
+            absoluteStart: number;
+            className?: string;
+            end: number;
+            start: number;
+            style?: React.CSSProperties;
+        }>,
         lineHighlight?: string,
     ) => React.ReactElement,
 ) => {
     const { lines, lineStarts } = getLinePositions(text);
 
     const highlightsByLine: {
-        [lineIndex: number]: Array<{ className?: string; end: number; start: number; style?: React.CSSProperties }>;
+        [lineIndex: number]: Array<{
+            absoluteStart: number;
+            className?: string;
+            end: number;
+            start: number;
+            style?: React.CSSProperties;
+        }>;
     } = {};
 
     highlights.forEach((highlight) => {
@@ -35,6 +47,7 @@ export const computeHighlightedContent = (
 
             if (rangeEnd > rangeStart) {
                 highlightsByLine[lineIndex].push({
+                    absoluteStart: highlight.start,
                     className: highlight.className,
                     end: rangeEnd,
                     start: rangeStart,
@@ -62,7 +75,13 @@ export const useHighlightedContent = (
     renderHighlightedLine: (
         line: string,
         lineIndex: number,
-        ranges: Array<{ className?: string; end: number; start: number; style?: React.CSSProperties }>,
+        ranges: Array<{
+            absoluteStart: number;
+            className?: string;
+            end: number;
+            start: number;
+            style?: React.CSSProperties;
+        }>,
         lineHighlight?: string,
     ) => React.ReactElement,
 ) => {
