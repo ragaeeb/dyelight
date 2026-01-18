@@ -113,6 +113,7 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
     (
         {
             className = '',
+            containerClassName = '',
             defaultValue = '',
             dir = 'ltr',
             enableAutoResize = true,
@@ -205,6 +206,7 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
         // Compute styles
         const baseTextareaStyle: React.CSSProperties = {
             ...DEFAULT_BASE_STYLE,
+            color: currentValue ? 'transparent' : 'inherit',
             height: textareaHeight ? `${textareaHeight}px` : undefined,
             resize: enableAutoResize ? 'none' : 'vertical',
         };
@@ -217,7 +219,7 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
         };
 
         return (
-            <div ref={containerRef} style={{ ...DEFAULT_CONTAINER_STYLE, ...style }}>
+            <div className={containerClassName} ref={containerRef} style={{ ...DEFAULT_CONTAINER_STYLE, ...style }}>
                 <div aria-hidden="true" ref={highlightLayerRef} style={highlightLayerStyle}>
                     {highlightedContent}
                 </div>

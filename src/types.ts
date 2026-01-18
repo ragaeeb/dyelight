@@ -67,6 +67,8 @@ export type CharacterRange = {
 export interface DyeLightProps extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'onChange'> {
     /** CSS class name for the textarea element */
     className?: string;
+    /** CSS class name for the container wrapper element */
+    containerClassName?: string;
     /** Default value for uncontrolled usage */
     defaultValue?: string;
     /** Text direction - supports left-to-right and right-to-left */

@@ -27,7 +27,9 @@ A lightweight TypeScript React component for highlighting characters in textarea
 - **Auto-resize**: Automatic textarea height adjustment based on content
 - **TypeScript**: Full TypeScript support with comprehensive type definitions
 - **Lightweight**: Minimal dependencies, optimized for performance
-- **Flexible Styling**: Support for CSS classes and inline styles
+- **Flexible Styling**: Support for CSS classes on both the textarea (`className`) and the wrapper container (`containerClassName`)
+- **Modern UI Friendly**: Optimized for integration with Tailwind CSS and UI libraries like shadcn/ui
+- **Smart Placeholder**: Placeholders remain visible even with the transparent character-highlighting overlay
 - **Storybook Playground**: Explore the component interactively with the bundled Storybook setup
 
 ## Development
@@ -212,7 +214,8 @@ function RefExample() {
 | `highlights`       | `CharacterRange[]`                 | `[]`        | Character range highlights           |
 | `lineHighlights`   | `{ [lineNumber: number]: string }` | `{}`        | Line-level highlights                |
 | `enableAutoResize` | `boolean`                          | `true`      | Enable auto-height adjustment        |
-| `className`        | `string`                           | `''`        | CSS class name                       |
+| `className`        | `string`                           | `''`        | CSS class for the textarea element   |
+| `containerClassName` | `string`                         | `''`        | CSS class for the wrapper container  |
 | `dir`              | `'ltr' \| 'rtl'`                   | `'ltr'`     | Text direction                       |
 | `rows`             | `number`                           | `4`         | Number of visible rows               |
 
@@ -266,9 +269,25 @@ Create a single selection highlight.
 
 Create line-level highlights.
 
-## Styling
+DyeLight uses CSS-in-JS for core functionality but allows complete customization through CSS classes.
 
-DyeLight uses CSS-in-JS for core functionality but allows complete customization through CSS classes and inline styles.
+### Modern Layout & UI (Tailwind CSS)
+
+To achieve modern UI effects like focus rings or shadow-depth, apply the layout and border styles to the `containerClassName`. Apply the inner spacing and typography to the `className`.
+
+```tsx
+<DyeLight
+    // Outer shell: handles layout, borders, and focus rings
+    containerClassName={cn(
+        "flex-1 min-h-0 rounded-md border border-input bg-background shadow-xs",
+        "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50"
+    )}
+    // Inner textarea: handles text color, spacing, and resizing
+    className="h-full w-full bg-transparent px-3 py-2 text-base outline-none"
+    placeholder="Start typing..."
+    enableAutoResize={false}
+/>
+```
 
 ### Example CSS Classes
 
