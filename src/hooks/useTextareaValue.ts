@@ -22,19 +22,6 @@ export const syncValueWithDOM = (
 
 export const handleChangeValue = (
     newValue: string,
-    isControlled: boolean,
-    setInternalValue: (value: string) => void,
-    onChange?: (value: string) => void,
-) => {
-    if (!isControlled) {
-        setInternalValue(newValue);
-    }
-
-    onChange?.(newValue);
-};
-
-export const handleInputValue = (
-    newValue: string,
     currentValue: string,
     isControlled: boolean,
     setInternalValue: (value: string) => void,
@@ -88,14 +75,7 @@ export const useTextareaValue = (value?: string, defaultValue = '', onChange?: (
 
     const handleChange = useCallback(
         (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-            handleChangeValue(e.target.value, isControlled, setInternalValue, onChange);
-        },
-        [isControlled, onChange],
-    );
-
-    const handleInput = useCallback(
-        (e: React.FormEvent<HTMLTextAreaElement>) => {
-            handleInputValue(e.currentTarget.value, currentValue, isControlled, setInternalValue, onChange);
+            handleChangeValue(e.target.value, currentValue, isControlled, setInternalValue, onChange);
         },
         [currentValue, isControlled, onChange],
     );
@@ -117,29 +97,5 @@ export const useTextareaValue = (value?: string, defaultValue = '', onChange?: (
         }
     }, [isControlled, value]);
 
-    useEffect(() => {
-        const textarea = textareaRef.current;
-        if (!textarea) {
-            return;
-        }
-
-        const observer = new MutationObserver(() => {
-            syncValueWithDOMCallback();
-        });
-
-        observer.observe(textarea, { attributeFilter: ['value'], attributes: true });
-
-        const intervalId = setInterval(() => {
-            if (textarea.value !== currentValue) {
-                syncValueWithDOMCallback();
-            }
-        }, 100);
-
-        return () => {
-            observer.disconnect();
-            clearInterval(intervalId);
-        };
-    }, [currentValue, syncValueWithDOMCallback]);
-
-    return { currentValue: currentValue, handleChange, handleInput, setValue, textareaRef };
+    return { currentValue, handleChange, setValue, textareaRef };
 };

@@ -50,8 +50,8 @@ export const DEFAULT_BASE_STYLE: React.CSSProperties = {
  * Positioned absolutely to overlay perfectly with the textarea content
  */
 export const DEFAULT_HIGHLIGHT_LAYER_STYLE: React.CSSProperties = {
-    /** Transparent border to match textarea default border */
-    border: 'transparent solid 1px',
+    /** Transparent border to match textarea default border - now synced dynamically */
+    border: '0px none transparent',
     /** Stretch to fill container bottom */
     bottom: 0,
     /** Consistent box model with textarea */

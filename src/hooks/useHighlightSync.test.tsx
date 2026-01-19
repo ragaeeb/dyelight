@@ -31,12 +31,24 @@ describe('syncHighlightStyles', () => {
     it('copies styles from textarea', () => {
         const highlight = { style: {} as Record<string, string> } as unknown as HTMLDivElement;
         const styleSnapshot: Record<string, string> = {
+            borderBottomStyle: 'solid',
+            borderBottomWidth: '1px',
+            borderLeftStyle: 'solid',
+            borderLeftWidth: '1px',
+            borderRightStyle: 'solid',
+            borderRightWidth: '1px',
+            borderTopStyle: 'solid',
+            borderTopWidth: '1px',
             fontFamily: 'Inter, sans-serif',
             fontSize: '18px',
             letterSpacing: '0.5px',
             lineHeight: '1.6',
+            overflowWrap: 'break-word',
             padding: '12px',
+            tabSize: '4',
             textIndent: '4px',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
             wordSpacing: '1px',
         };
 
@@ -46,7 +58,10 @@ describe('syncHighlightStyles', () => {
             () => styleSnapshot as unknown as CSSStyleDeclaration,
         );
 
-        expect(highlight.style).toEqual(styleSnapshot);
+        // The function forces borderColor to transparent, so we expect that override
+        const expectedStyles = { ...styleSnapshot, borderColor: 'transparent' };
+
+        expect(highlight.style).toEqual(expectedStyles);
     });
 });
 

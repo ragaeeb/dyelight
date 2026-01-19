@@ -31,6 +31,23 @@ export const syncHighlightStyles = (
     highlightLayer.style.letterSpacing = computedStyle.letterSpacing;
     highlightLayer.style.wordSpacing = computedStyle.wordSpacing;
     highlightLayer.style.textIndent = computedStyle.textIndent;
+
+    // Sync wrapping strategies to ensure identical layout
+    highlightLayer.style.whiteSpace = computedStyle.whiteSpace;
+    highlightLayer.style.wordBreak = computedStyle.wordBreak;
+    highlightLayer.style.overflowWrap = computedStyle.overflowWrap;
+    highlightLayer.style.tabSize = computedStyle.tabSize;
+
+    // Sync border width and style to ensure box-model matches, but keep transparent
+    highlightLayer.style.borderTopWidth = computedStyle.borderTopWidth;
+    highlightLayer.style.borderRightWidth = computedStyle.borderRightWidth;
+    highlightLayer.style.borderBottomWidth = computedStyle.borderBottomWidth;
+    highlightLayer.style.borderLeftWidth = computedStyle.borderLeftWidth;
+    highlightLayer.style.borderTopStyle = computedStyle.borderTopStyle;
+    highlightLayer.style.borderRightStyle = computedStyle.borderRightStyle;
+    highlightLayer.style.borderBottomStyle = computedStyle.borderBottomStyle;
+    highlightLayer.style.borderLeftStyle = computedStyle.borderLeftStyle;
+    highlightLayer.style.borderColor = 'transparent';
 };
 
 /**

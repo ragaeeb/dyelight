@@ -51,4 +51,86 @@ export const Playground: Story = {
     },
 };
 
-export const AutoResizeDisabled: Story = { args: { enableAutoResize: false, rows: 4 } };
+export const BasicUncontrolled: Story = {
+    args: {
+        defaultValue:
+            'This is an uncontrolled DyeLight component.\nType here to see it work without external state management.',
+    },
+};
+
+export const MockSyntaxHighlighting: Story = {
+    args: {
+        defaultValue: `import React from 'react';\n\nconst Component = () => {\n    return <div>Hello World</div>;\n};`,
+        highlights: [
+            ...HighlightBuilder.pattern(
+                `import React from 'react';\n\nconst Component = () => {\n    return <div>Hello World</div>;\n};`,
+                /\b(const|import|from|return)\b/g,
+                { color: '#c678dd', fontWeight: 'bold' },
+            ),
+            ...HighlightBuilder.pattern(
+                `import React from 'react';\n\nconst Component = () => {\n    return <div>Hello World</div>;\n};`,
+                /'[^']*'/g,
+                { color: '#98c379' },
+            ),
+            ...HighlightBuilder.pattern(
+                `import React from 'react';\n\nconst Component = () => {\n    return <div>Hello World</div>;\n};`,
+                /Component/g,
+                { color: '#e5c07b' },
+            ),
+            ...HighlightBuilder.pattern(
+                `import React from 'react';\n\nconst Component = () => {\n    return <div>Hello World</div>;\n};`,
+                /[{}]/g,
+                { color: '#abb2bf' },
+            ),
+            ...HighlightBuilder.pattern(
+                `import React from 'react';\n\nconst Component = () => {\n    return <div>Hello World</div>;\n};`,
+                /[<>]/g,
+                { color: '#56b6c2' },
+            ),
+        ],
+        style: {
+            backgroundColor: '#282c34',
+            borderRadius: '4px',
+            color: '#abb2bf',
+            fontFamily: 'monospace',
+            padding: '16px',
+        },
+    },
+};
+
+export const ScrollSynchronization: Story = {
+    args: {
+        defaultValue: Array.from({ length: 50 })
+            .map((_, i) => `Line ${i + 1}: This content is long enough to scroll.`)
+            .join('\n'),
+        enableAutoResize: false,
+        highlights: HighlightBuilder.pattern(
+            Array.from({ length: 50 })
+                .map((_, i) => `Line ${i + 1}: This content is long enough to scroll.`)
+                .join('\n'),
+            /Line \d+/g,
+            { color: 'blue', fontWeight: 'bold' },
+        ),
+        rows: 10,
+        style: { border: '1px solid #ccc', height: '200px', width: '100%' },
+    },
+};
+
+export const RightToLeft: Story = {
+    args: {
+        defaultValue: 'مرحبا بكم في DyeLight\nهذا نص عربي للتجربة',
+        dir: 'rtl',
+        highlights: HighlightBuilder.pattern('مرحبا بكم في DyeLight\nهذا نص عربي للتجربة', /DyeLight/g, {
+            backgroundColor: 'yellow',
+        }),
+        style: { direction: 'rtl', fontFamily: 'Arial, sans-serif', textAlign: 'right' },
+    },
+};
+
+export const AutoResizeDisabled: Story = {
+    args: {
+        defaultValue: 'This component will not auto-resize.\nIt has a fixed number of rows.',
+        enableAutoResize: false,
+        rows: 4,
+    },
+};
