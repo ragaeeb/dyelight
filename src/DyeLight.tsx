@@ -77,17 +77,23 @@ export const renderHighlightedLine = (
         const clampedStart = Math.max(0, Math.min(start, line.length));
         const clampedEnd = Math.max(clampedStart, Math.min(end, line.length));
 
+        if (clampedEnd <= lastIndex) {
+            return;
+        }
+
+        const effectiveStart = Math.max(clampedStart, lastIndex);
+
         // Add text before highlight
-        if (clampedStart > lastIndex) {
-            const textBefore = line.slice(lastIndex, clampedStart);
+        if (effectiveStart > lastIndex) {
+            const textBefore = line.slice(lastIndex, effectiveStart);
             if (textBefore) {
                 result.push(textBefore);
             }
         }
 
         // Add highlighted text
-        if (clampedEnd > clampedStart) {
-            const highlightedText = line.slice(clampedStart, clampedEnd);
+        if (clampedEnd > effectiveStart) {
+            const highlightedText = line.slice(effectiveStart, clampedEnd);
             result.push(
                 <span
                     className={className}
