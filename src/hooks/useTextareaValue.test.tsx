@@ -22,32 +22,19 @@ await mock.module('react', () => ({
     },
 }));
 
-const { applySetValue, handleChangeValue, handleInputValue, syncValueWithDOM, useTextareaValue } = await import(
-    './useTextareaValue'
-);
+const { applySetValue, handleChangeValue, syncValueWithDOM, useTextareaValue } = await import('./useTextareaValue');
 
 describe('textarea value helpers', () => {
     it('handleChangeValue updates uncontrolled state and notifies listeners', () => {
         const changes: string[] = [];
         handleChangeValue(
             'next',
+            'current',
             false,
             (value) => changes.push(value),
             (value) => changes.push(`event:${value}`),
         );
         expect(changes).toEqual(['next', 'event:next']);
-    });
-
-    it('handleInputValue respects controlled state', () => {
-        const changes: string[] = [];
-        handleInputValue(
-            'programmatic',
-            'current',
-            true,
-            () => changes.push('internal'),
-            (value) => changes.push(value),
-        );
-        expect(changes).toEqual(['programmatic']);
     });
 
     it('applySetValue writes to textarea and updates state', () => {
@@ -81,14 +68,10 @@ describe('textarea value helpers', () => {
 describe('useTextareaValue', () => {
     it('returns handlers and current value', () => {
         state.lastSet = undefined;
-        const { currentValue, handleChange, handleInput, setValue, textareaRef } = useTextareaValue(
-            undefined,
-            'initial',
-        );
+        const { currentValue, handleChange, setValue, textareaRef } = useTextareaValue(undefined, 'initial');
 
         expect(currentValue).toBe('initial');
         expect(typeof handleChange).toBe('function');
-        expect(typeof handleInput).toBe('function');
         expect(typeof setValue).toBe('function');
         expect(textareaRef.current).toBeNull();
 

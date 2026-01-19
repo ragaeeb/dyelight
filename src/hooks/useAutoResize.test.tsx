@@ -23,6 +23,10 @@ await mock.module('react', () => ({
 
 const { createAutoResizeHandler, useAutoResize } = await import('./useAutoResize');
 
+global.getComputedStyle = (() => {
+    return { borderBottomWidth: '0px', borderTopWidth: '0px' };
+}) as unknown as typeof getComputedStyle;
+
 describe('createAutoResizeHandler', () => {
     it('updates height when auto resize is enabled', () => {
         const heights: Array<number | undefined> = [];

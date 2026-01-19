@@ -29,8 +29,20 @@
  * ```
  */
 export const autoResize = (textArea: HTMLTextAreaElement) => {
-    // Reset height to auto to allow shrinking
+    const computedStyle = getComputedStyle(textArea);
+    const borderTop = parseFloat(computedStyle.borderTopWidth) || 0;
+    const borderBottom = parseFloat(computedStyle.borderBottomWidth) || 0;
+
+    // Reset height to auto to force accurate scrollHeight calculation (shrink if needed)
     textArea.style.height = 'auto';
-    // Set height to scroll height to fit content
-    textArea.style.height = `${textArea.scrollHeight}px`;
+
+    const scrollHeight = textArea.scrollHeight;
+    const totalBorderHeight = borderTop + borderBottom;
+
+    // Only add border compensation if borders are significant (> 2px), otherwise trust scrollHeight
+    // This handles browser differences in how scrollHeight reports when box-sizing is border-box
+    const finalHeight = totalBorderHeight > 2 ? scrollHeight + totalBorderHeight : scrollHeight;
+
+    // Set height including borders for border-box
+    textArea.style.height = `${finalHeight}px`;
 };

@@ -141,11 +141,7 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
         const containerRef = useRef<HTMLDivElement>(null);
 
         // Custom hooks for managing component logic
-        const { currentValue, handleChange, handleInput, setValue, textareaRef } = useTextareaValue(
-            value,
-            defaultValue,
-            onChange,
-        );
+        const { currentValue, handleChange, setValue, textareaRef } = useTextareaValue(value, defaultValue, onChange);
 
         const { handleAutoResize, textareaHeight } = useAutoResize(enableAutoResize);
 
@@ -165,15 +161,6 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
                 handleAutoResize(e.target);
             },
             [handleChange, handleAutoResize],
-        );
-
-        // Enhanced input handler that includes auto-resize
-        const handleInputWithResize = useCallback(
-            (e: React.FormEvent<HTMLTextAreaElement>) => {
-                handleInput(e);
-                handleAutoResize(e.currentTarget);
-            },
-            [handleInput, handleAutoResize],
         );
 
         // Enhanced setValue that includes auto-resize
@@ -207,15 +194,6 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
                         if (span instanceof HTMLElement) {
                             const textarea = textareaRef.current;
                             const spanTop = span.offsetTop;
-                            const spanHeight = span.offsetHeight;
-                            const scrollTop = textarea.scrollTop;
-                            const clientHeight = textarea.clientHeight;
-
-                            // Check if the element is already comfortably visible
-                            // We define "comfortably visible" as the start being in the viewport
-                            // and not too close to the edge (unless it's top/bot).
-                            const isStartVisible = spanTop >= scrollTop && spanTop <= scrollTop + clientHeight - offset;
-
                             if (behavior === 'smooth') {
                                 textarea.scrollTo({ behavior: 'smooth', top: spanTop - offset });
                             } else {
@@ -232,12 +210,40 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
         );
 
         // Sync styles and handle auto-resize on value changes
+        // 'currentValue' is a dependency to ensure we trigger resize/sync when the value prop changes programmatically
         useEffect(() => {
             if (textareaRef.current && enableAutoResize) {
                 handleAutoResize(textareaRef.current);
             }
             syncStyles(textareaRef);
         }, [currentValue, handleAutoResize, enableAutoResize, syncStyles, textareaRef]);
+
+        // Use ResizeObserver to handle structural changes (e.g. container resize, scrollbar appearance)
+        useEffect(() => {
+            if (!textareaRef.current) {
+                return;
+            }
+
+            const textarea = textareaRef.current;
+            let rafId: number;
+
+            const observer = new ResizeObserver(() => {
+                cancelAnimationFrame(rafId);
+                rafId = requestAnimationFrame(() => {
+                    syncStyles(textareaRef);
+                    // We re-trigger auto-resize in case width changed and text wrapped
+                    if (enableAutoResize) {
+                        handleAutoResize(textarea);
+                    }
+                });
+            });
+
+            observer.observe(textarea);
+            return () => {
+                observer.disconnect();
+                cancelAnimationFrame(rafId);
+            };
+        }, [textareaRef, syncStyles, handleAutoResize, enableAutoResize]);
 
         // Compute styles
         const baseTextareaStyle: React.CSSProperties = {
@@ -264,7 +270,6 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
                     className={className}
                     dir={dir}
                     onChange={handleChangeWithResize}
-                    onInput={handleInputWithResize}
                     onScroll={handleScroll}
                     ref={textareaRef}
                     rows={rows}
