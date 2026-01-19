@@ -30,7 +30,7 @@ type Story = StoryObj<typeof DyeLight>;
 
 export const Playground: Story = {
     args: {
-        highlights: [{ className: 'highlight', end: 30, start: 28 }],
+        highlights: [{ className: 'highlight', end: 30, start: 25 }],
 
         lineHighlights: { '0': 'rgba(255, 235, 0, 0.35)', '1': 'line-accent' },
     },
@@ -88,14 +88,20 @@ export const MockSyntaxHighlighting: Story = {
                 { color: '#56b6c2' },
             ),
         ],
-        style: {
-            backgroundColor: '#282c34',
-            borderRadius: '4px',
-            color: '#abb2bf',
-            fontFamily: 'monospace',
-            padding: '16px',
-        },
     },
+    render: (args) => (
+        <div
+            style={{
+                backgroundColor: '#282c34',
+                borderRadius: '4px',
+                color: '#abb2bf',
+                fontFamily: 'monospace',
+                padding: '16px',
+            }}
+        >
+            <DyeLight {...args} />
+        </div>
+    ),
 };
 
 export const ScrollSynchronization: Story = {
@@ -127,10 +133,19 @@ export const RightToLeft: Story = {
     },
 };
 
-export const AutoResizeDisabled: Story = {
+export const FixedSize: Story = {
     args: {
-        defaultValue: 'This component will not auto-resize.\nIt has a fixed number of rows.',
+        defaultValue:
+            'This component will not auto-resize.\nIt has a fixed number of rows (4).\nAnd manual resize is disabled.',
         enableAutoResize: false,
         rows: 4,
     },
+    render: (args) => (
+        <>
+            <style>{`.fixed-size-story textarea { resize: none !important; }`}</style>
+            <div className="fixed-size-story">
+                <DyeLight {...args} />
+            </div>
+        </>
+    ),
 };

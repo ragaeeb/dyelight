@@ -48,6 +48,21 @@ export const syncHighlightStyles = (
     highlightLayer.style.borderBottomStyle = computedStyle.borderBottomStyle;
     highlightLayer.style.borderLeftStyle = computedStyle.borderLeftStyle;
     highlightLayer.style.borderColor = 'transparent';
+
+    // Calculate scrollbar width to ensure content width is identical
+    // offsetWidth includes borders, padding, and scrollbar
+    // clientWidth includes padding but excludes borders and scrollbar
+    // scrollbarWidth = offsetWidth - clientWidth - (borderLeft + borderRight)
+    const borderLeft = parseFloat(computedStyle.borderLeftWidth) || 0;
+    const borderRight = parseFloat(computedStyle.borderRightWidth) || 0;
+    const scrollbarWidth = textarea.offsetWidth - textarea.clientWidth - borderLeft - borderRight;
+
+    if (scrollbarWidth > 0) {
+        const paddingRight = parseFloat(computedStyle.paddingRight) || 0;
+        highlightLayer.style.paddingRight = `${paddingRight + scrollbarWidth}px`;
+    } else {
+        highlightLayer.style.paddingRight = computedStyle.paddingRight;
+    }
 };
 
 /**

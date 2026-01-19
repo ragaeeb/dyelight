@@ -220,6 +220,25 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             void currentValue;
         }, [currentValue, handleAutoResize, enableAutoResize, syncStyles, textareaRef]);
 
+        // Use ResizeObserver to handle structural changes (e.g. container resize, scrollbar appearance)
+        useEffect(() => {
+            if (!textareaRef.current) {
+                return;
+            }
+
+            const textarea = textareaRef.current;
+            const observer = new ResizeObserver(() => {
+                syncStyles(textareaRef);
+                // We re-trigger auto-resize in case width changed and text wrapped
+                if (enableAutoResize) {
+                    handleAutoResize(textarea);
+                }
+            });
+
+            observer.observe(textarea);
+            return () => observer.disconnect();
+        }, [textareaRef, syncStyles, handleAutoResize, enableAutoResize]);
+
         // Compute styles
         const baseTextareaStyle: React.CSSProperties = {
             ...DEFAULT_BASE_STYLE,
