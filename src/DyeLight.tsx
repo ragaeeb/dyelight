@@ -216,8 +216,6 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
                 handleAutoResize(textareaRef.current);
             }
             syncStyles(textareaRef);
-            // Force dependency usage
-            void currentValue;
         }, [currentValue, handleAutoResize, enableAutoResize, syncStyles, textareaRef]);
 
         // Use ResizeObserver to handle structural changes (e.g. container resize, scrollbar appearance)
@@ -227,16 +225,24 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             }
 
             const textarea = textareaRef.current;
+            let rafId: number;
+
             const observer = new ResizeObserver(() => {
-                syncStyles(textareaRef);
-                // We re-trigger auto-resize in case width changed and text wrapped
-                if (enableAutoResize) {
-                    handleAutoResize(textarea);
-                }
+                cancelAnimationFrame(rafId);
+                rafId = requestAnimationFrame(() => {
+                    syncStyles(textareaRef);
+                    // We re-trigger auto-resize in case width changed and text wrapped
+                    if (enableAutoResize) {
+                        handleAutoResize(textarea);
+                    }
+                });
             });
 
             observer.observe(textarea);
-            return () => observer.disconnect();
+            return () => {
+                observer.disconnect();
+                cancelAnimationFrame(rafId);
+            };
         }, [textareaRef, syncStyles, handleAutoResize, enableAutoResize]);
 
         // Compute styles

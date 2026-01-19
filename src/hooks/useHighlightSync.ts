@@ -58,10 +58,14 @@ export const syncHighlightStyles = (
     const scrollbarWidth = textarea.offsetWidth - textarea.clientWidth - borderLeft - borderRight;
 
     if (scrollbarWidth > 0) {
-        const paddingRight = parseFloat(computedStyle.paddingRight) || 0;
-        highlightLayer.style.paddingRight = `${paddingRight + scrollbarWidth}px`;
-    } else {
-        highlightLayer.style.paddingRight = computedStyle.paddingRight;
+        const isRTL = computedStyle.direction === 'rtl';
+        if (isRTL) {
+            const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0;
+            highlightLayer.style.paddingLeft = `${paddingLeft + scrollbarWidth}px`;
+        } else {
+            const paddingRight = parseFloat(computedStyle.paddingRight) || 0;
+            highlightLayer.style.paddingRight = `${paddingRight + scrollbarWidth}px`;
+        }
     }
 };
 
