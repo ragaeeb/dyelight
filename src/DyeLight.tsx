@@ -1,10 +1,11 @@
 import type React from 'react';
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { useAutoResize } from './hooks/useAutoResize';
 import { useHighlightedContent } from './hooks/useHighlightedContent';
 import { useHighlightSync } from './hooks/useHighlightSync';
 import { useTextareaValue } from './hooks/useTextareaValue';
 import { DEFAULT_BASE_STYLE, DEFAULT_CONTAINER_STYLE, DEFAULT_HIGHLIGHT_LAYER_STYLE } from './styles';
+import { AIOptimizedTelemetry } from './telemetry';
 import { isColorValue } from './textUtils';
 import type { DyeLightProps, DyeLightRef } from './types';
 
@@ -64,7 +65,6 @@ export const renderHighlightedLine = (
         return createLineElement(content, lineIndex, lineHighlight);
     }
 
-    // Sort ranges by start position
     const sortedRanges = ranges.toSorted((a, b) => a.start - b.start);
 
     const result: React.ReactNode[] = [];
@@ -73,7 +73,6 @@ export const renderHighlightedLine = (
     sortedRanges.forEach((range, idx) => {
         const { className, end, start, style: rangeStyle } = range;
 
-        // Clamp range to line bounds
         const clampedStart = Math.max(0, Math.min(start, line.length));
         const clampedEnd = Math.max(clampedStart, Math.min(end, line.length));
 
@@ -83,7 +82,6 @@ export const renderHighlightedLine = (
 
         const effectiveStart = Math.max(clampedStart, lastIndex);
 
-        // Add text before highlight
         if (effectiveStart > lastIndex) {
             const textBefore = line.slice(lastIndex, effectiveStart);
             if (textBefore) {
@@ -91,7 +89,6 @@ export const renderHighlightedLine = (
             }
         }
 
-        // Add highlighted text
         if (clampedEnd > effectiveStart) {
             const highlightedText = line.slice(effectiveStart, clampedEnd);
             result.push(
@@ -109,7 +106,6 @@ export const renderHighlightedLine = (
         lastIndex = Math.max(lastIndex, clampedEnd);
     });
 
-    // Add remaining text
     if (lastIndex < line.length) {
         const textAfter = line.slice(lastIndex);
         if (textAfter) {
@@ -140,18 +136,54 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             rows = 4,
             style,
             value,
+            debug = false,
+            debugMaxEvents = 1000,
             ...props
         },
         ref,
     ) => {
         const containerRef = useRef<HTMLDivElement>(null);
+        const textareaHeightRef = useRef<number | undefined>(undefined);
 
-        // Custom hooks for managing component logic
-        const { currentValue, handleChange, setValue, textareaRef } = useTextareaValue(value, defaultValue, onChange);
+        const telemetry = useMemo(() => new AIOptimizedTelemetry(debug, debugMaxEvents), [debug, debugMaxEvents]);
 
-        const { handleAutoResize, textareaHeight } = useAutoResize(enableAutoResize);
+        useEffect(() => {
+            telemetry.setEnabled(debug);
+        }, [debug, telemetry]);
 
-        const { highlightLayerRef, syncScroll, syncStyles } = useHighlightSync();
+        const isControlled = value !== undefined;
+        const getHeight = useCallback(() => textareaHeightRef.current, []);
+
+        const { currentValue, handleChange, setValue, textareaRef } = useTextareaValue(
+            value,
+            defaultValue,
+            onChange,
+            telemetry,
+            undefined,
+            getHeight,
+        );
+
+        const getCurrentValue = useCallback(() => currentValue, [currentValue]);
+
+        const { handleAutoResize, textareaHeight } = useAutoResize(
+            enableAutoResize,
+            telemetry,
+            textareaRef,
+            getCurrentValue,
+            isControlled,
+        );
+
+        useEffect(() => {
+            textareaHeightRef.current = textareaHeight;
+        }, [textareaHeight]);
+
+        const { highlightLayerRef, syncScroll, syncStyles } = useHighlightSync(
+            telemetry,
+            textareaRef,
+            getCurrentValue,
+            getHeight,
+            isControlled,
+        );
 
         const highlightedContent = useHighlightedContent(
             currentValue,
@@ -160,7 +192,6 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             renderHighlightedLine,
         );
 
-        // Enhanced change handler that includes auto-resize
         const handleChangeWithResize = useCallback(
             (e: React.ChangeEvent<HTMLTextAreaElement>) => {
                 handleChange(e);
@@ -169,7 +200,6 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             [handleChange, handleAutoResize],
         );
 
-        // Enhanced setValue that includes auto-resize
         const setValueWithResize = useCallback(
             (newValue: string) => {
                 setValue(newValue);
@@ -180,18 +210,31 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             [setValue, handleAutoResize, textareaRef],
         );
 
-        // Scroll handler with ref binding
         useEffect(() => {}, []);
 
         const handleScroll = useCallback(() => {
             syncScroll(textareaRef);
         }, [syncScroll, textareaRef]);
 
-        // Expose ref methods
+        useEffect(() => {
+            if (!debug) {
+                return;
+            }
+
+            const intervalId = setInterval(() => {
+                telemetry.record('snapshot', 'system', {}, textareaRef, currentValue, textareaHeight, isControlled);
+            }, 1000);
+
+            return () => clearInterval(intervalId);
+        }, [debug, telemetry, textareaRef, currentValue, textareaHeight, isControlled]);
+
         useImperativeHandle(
             ref,
             () => ({
                 blur: () => textareaRef.current?.blur(),
+                exportForAI: () => {
+                    return telemetry.exportForAI(textareaRef, currentValue, textareaHeight, highlights, lineHighlights);
+                },
                 focus: () => textareaRef.current?.focus(),
                 getValue: () => currentValue,
                 scrollToPosition: (pos: number, offset = 40, behavior: ScrollBehavior = 'auto') => {
@@ -212,11 +255,18 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
                 setSelectionRange: (start: number, end: number) => textareaRef.current?.setSelectionRange(start, end),
                 setValue: setValueWithResize,
             }),
-            [currentValue, setValueWithResize, highlightLayerRef, textareaRef],
+            [
+                currentValue,
+                setValueWithResize,
+                highlightLayerRef,
+                textareaRef,
+                telemetry,
+                textareaHeight,
+                highlights,
+                lineHighlights,
+            ],
         );
 
-        // Sync styles and handle auto-resize on value changes
-        // 'currentValue' is a dependency to ensure we trigger resize/sync when the value prop changes programmatically
         useEffect(() => {
             if (textareaRef.current && enableAutoResize) {
                 handleAutoResize(textareaRef.current);
@@ -224,7 +274,6 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             syncStyles(textareaRef);
         }, [currentValue, handleAutoResize, enableAutoResize, syncStyles, textareaRef]);
 
-        // Use ResizeObserver to handle structural changes (e.g. container resize, scrollbar appearance)
         useEffect(() => {
             if (!textareaRef.current) {
                 return;
@@ -237,7 +286,6 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
                 cancelAnimationFrame(rafId);
                 rafId = requestAnimationFrame(() => {
                     syncStyles(textareaRef);
-                    // We re-trigger auto-resize in case width changed and text wrapped
                     if (enableAutoResize) {
                         handleAutoResize(textarea);
                     }
@@ -251,7 +299,6 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             };
         }, [textareaRef, syncStyles, handleAutoResize, enableAutoResize]);
 
-        // Compute styles
         const baseTextareaStyle: React.CSSProperties = {
             ...DEFAULT_BASE_STYLE,
             color: currentValue ? 'transparent' : 'inherit',

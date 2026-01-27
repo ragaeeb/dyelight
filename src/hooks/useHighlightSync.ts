@@ -1,5 +1,15 @@
-import { useCallback, useRef } from 'react';
+/**
+ * @fileoverview Hook for managing highlight layer synchronization
+ */
 
+import { useCallback, useRef } from 'react';
+import type { AIOptimizedTelemetry } from '../telemetry';
+
+/**
+ * Synchronizes scroll positions between textarea and highlight layer
+ * @param textarea The textarea element
+ * @param highlightLayer The highlight overlay element
+ */
 export const syncScrollPositions = (
     textarea: Pick<HTMLTextAreaElement, 'scrollLeft' | 'scrollTop'> | null,
     highlightLayer: Pick<HTMLDivElement, 'scrollLeft' | 'scrollTop'> | null,
@@ -13,6 +23,12 @@ export const syncScrollPositions = (
     highlightLayer.scrollLeft = scrollLeft;
 };
 
+/**
+ * Synchronizes styles between textarea and highlight layer for pixel-perfect alignment
+ * @param textarea The textarea element
+ * @param highlightLayer The highlight overlay element
+ * @param computeStyle Function to compute styles (defaults to getComputedStyle)
+ */
 export const syncHighlightStyles = (
     textarea: HTMLTextAreaElement | null,
     highlightLayer: HTMLDivElement | null,
@@ -32,13 +48,11 @@ export const syncHighlightStyles = (
     highlightLayer.style.wordSpacing = computedStyle.wordSpacing;
     highlightLayer.style.textIndent = computedStyle.textIndent;
 
-    // Sync wrapping strategies to ensure identical layout
     highlightLayer.style.whiteSpace = computedStyle.whiteSpace;
     highlightLayer.style.wordBreak = computedStyle.wordBreak;
     highlightLayer.style.overflowWrap = computedStyle.overflowWrap;
     highlightLayer.style.tabSize = computedStyle.tabSize;
 
-    // Sync border width and style to ensure box-model matches, but keep transparent
     highlightLayer.style.borderTopWidth = computedStyle.borderTopWidth;
     highlightLayer.style.borderRightWidth = computedStyle.borderRightWidth;
     highlightLayer.style.borderBottomWidth = computedStyle.borderBottomWidth;
@@ -49,10 +63,6 @@ export const syncHighlightStyles = (
     highlightLayer.style.borderLeftStyle = computedStyle.borderLeftStyle;
     highlightLayer.style.borderColor = 'transparent';
 
-    // Calculate scrollbar width to ensure content width is identical
-    // offsetWidth includes borders, padding, and scrollbar
-    // clientWidth includes padding but excludes borders and scrollbar
-    // scrollbarWidth = offsetWidth - clientWidth - (borderLeft + borderRight)
     const borderLeft = parseFloat(computedStyle.borderLeftWidth) || 0;
     const borderRight = parseFloat(computedStyle.borderRightWidth) || 0;
     const scrollbarWidth = textarea.offsetWidth - textarea.clientWidth - borderLeft - borderRight;
@@ -71,17 +81,95 @@ export const syncHighlightStyles = (
 
 /**
  * Hook for managing highlight layer synchronization
+ * Provides functions to sync scroll and styles between textarea and overlay
+ *
+ * @param telemetry Optional telemetry collector for debugging
+ * @param textareaRef Optional textarea reference for telemetry
+ * @param getCurrentValue Optional function to get current value for telemetry
+ * @param getHeight Optional function to get current height for telemetry
+ * @param isControlled Whether the component is in controlled mode
+ * @returns Object containing highlight layer ref and sync functions
  */
-export const useHighlightSync = () => {
+export const useHighlightSync = (
+    telemetry?: AIOptimizedTelemetry,
+    textareaRef?: React.RefObject<HTMLTextAreaElement>,
+    getCurrentValue?: () => string,
+    getHeight?: () => number | undefined,
+    isControlled?: boolean,
+) => {
     const highlightLayerRef = useRef<HTMLDivElement>(null);
 
-    const syncScroll = useCallback((textareaRef: React.RefObject<HTMLTextAreaElement | null>) => {
-        syncScrollPositions(textareaRef.current, highlightLayerRef.current);
-    }, []);
+    /**
+     * Synchronizes scroll position between textarea and highlight layer
+     * @param textareaRefParam The textarea ref to sync from
+     */
+    const syncScroll = useCallback(
+        (textareaRefParam: React.RefObject<HTMLTextAreaElement | null>) => {
+            const before = {
+                scrollLeft: highlightLayerRef.current?.scrollLeft,
+                scrollTop: highlightLayerRef.current?.scrollTop,
+            };
 
-    const syncStyles = useCallback((textareaRef: React.RefObject<HTMLTextAreaElement | null>) => {
-        syncHighlightStyles(textareaRef.current, highlightLayerRef.current);
-    }, []);
+            syncScrollPositions(textareaRefParam.current, highlightLayerRef.current);
+
+            const after = {
+                scrollLeft: highlightLayerRef.current?.scrollLeft,
+                scrollTop: highlightLayerRef.current?.scrollTop,
+            };
+
+            telemetry?.record(
+                'syncScroll',
+                'sync',
+                {
+                    after,
+                    before,
+                    changed: before.scrollTop !== after.scrollTop || before.scrollLeft !== after.scrollLeft,
+                },
+                textareaRef ?? textareaRefParam,
+                getCurrentValue?.() ?? '',
+                getHeight?.(),
+                isControlled ?? false,
+            );
+        },
+        [telemetry, textareaRef, getCurrentValue, getHeight, isControlled],
+    );
+
+    /**
+     * Synchronizes styles between textarea and highlight layer
+     * @param textareaRefParam The textarea ref to sync from
+     */
+    const syncStyles = useCallback(
+        (textareaRefParam: React.RefObject<HTMLTextAreaElement | null>) => {
+            if (!textareaRefParam.current || !highlightLayerRef.current) {
+                return;
+            }
+
+            const computedStyle = getComputedStyle(textareaRefParam.current);
+            const scrollbarWidth =
+                textareaRefParam.current.offsetWidth -
+                textareaRefParam.current.clientWidth -
+                (parseFloat(computedStyle.borderLeftWidth) || 0) -
+                (parseFloat(computedStyle.borderRightWidth) || 0);
+
+            syncHighlightStyles(textareaRefParam.current, highlightLayerRef.current);
+
+            telemetry?.record(
+                'syncStyles',
+                'sync',
+                {
+                    direction: computedStyle.direction,
+                    fontSize: computedStyle.fontSize,
+                    padding: computedStyle.padding,
+                    scrollbarWidth,
+                },
+                textareaRef ?? textareaRefParam,
+                getCurrentValue?.() ?? '',
+                getHeight?.(),
+                isControlled ?? false,
+            );
+        },
+        [telemetry, textareaRef, getCurrentValue, getHeight, isControlled],
+    );
 
     return { highlightLayerRef, syncScroll, syncStyles };
 };

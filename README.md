@@ -31,6 +31,7 @@ A lightweight TypeScript React component for highlighting characters in textarea
 - **Modern UI Friendly**: Optimized for integration with Tailwind CSS and UI libraries like shadcn/ui
 - **Smart Placeholder**: Placeholders remain visible even with the transparent character-highlighting overlay
 - **Storybook Playground**: Explore the component interactively with the bundled Storybook setup
+- **AI-Powered Debugging**: Built-in telemetry system for diagnosing sync issues with AI assistance
 
 ## Development
 
@@ -202,6 +203,91 @@ function RefExample() {
 }
 ```
 
+## AI-Powered Debugging
+
+DyeLight includes a built-in telemetry system that can help diagnose synchronization issues between the textarea and React state. This is especially useful for hard-to-reproduce bugs.
+
+### Enabling Debug Mode
+
+Simply add the `debug` prop to enable telemetry collection:
+
+```tsx
+import { useRef, useState } from 'react';
+import { DyeLight, type DyeLightRef } from 'dyelight';
+
+function DebugExample() {
+    const [text, setText] = useState('');
+    const dyeLightRef = useRef<DyeLightRef>(null);
+
+    const handleExportDebug = async () => {
+        const report = dyeLightRef.current?.exportForAI();
+        
+        if (report) {
+            // Copy to clipboard
+            await navigator.clipboard.writeText(report);
+            alert('Debug report copied! Paste it into Claude or ChatGPT for analysis.');
+        }
+    };
+
+    return (
+        <div>
+            <DyeLight
+                ref={dyeLightRef}
+                value={text}
+                onChange={setText}
+                debug={true}
+                rows={10}
+            />
+            
+            <button onClick={handleExportDebug}>
+                Export Debug Report
+            </button>
+        </div>
+    );
+}
+```
+
+### Using the Debug Report
+
+When you experience sync issues:
+
+1. **Enable debug mode** - Add `debug={true}` to your DyeLight component
+2. **Reproduce the issue** - Use the component normally until the bug occurs
+3. **Export the report** - Call `ref.current?.exportForAI()` to get a JSON report
+4. **Get AI diagnosis**:
+   - Go to [claude.ai](https://claude.ai) or [chat.openai.com](https://chat.openai.com)
+   - Paste the exported JSON
+   - Ask: *"Please analyze this DyeLight debug report and identify the issue"*
+5. **Get instant diagnosis** - The AI will identify the root cause and suggest fixes
+
+### What's Included in Debug Reports
+
+The exported report contains:
+
+- **Complete event timeline** - Every onChange, resize, and sync operation
+- **State snapshots** - DOM and React state at each event
+- **Automatic issue detection** - Pre-identified problems like:
+  - State mismatches between DOM and React
+  - Rapid successive events (race conditions)
+  - Excessive resize operations
+  - Layout thrashing
+- **Timing information** - Millisecond-precise event timing
+- **Browser metadata** - User agent, platform, React version
+- **AI instructions** - Built-in guidance for AI analysis
+
+### Debug Mode Options
+
+```tsx
+<DyeLight
+    debug={true}              // Enable telemetry collection
+    debugMaxEvents={1000}     // Max events to retain (default: 1000)
+    value={text}
+    onChange={setText}
+/>
+```
+
+**Note**: Debug mode has minimal performance impact but should generally be disabled in production unless troubleshooting specific issues.
+
 ## API Reference
 
 ### DyeLight Props
@@ -218,6 +304,8 @@ function RefExample() {
 | `containerClassName` | `string`                         | `''`        | CSS class for the wrapper container  |
 | `dir`              | `'ltr' \| 'rtl'`                   | `'ltr'`     | Text direction                       |
 | `rows`             | `number`                           | `4`         | Number of visible rows               |
+| `debug`            | `boolean`                          | `false`     | Enable telemetry collection          |
+| `debugMaxEvents`   | `number`                           | `1000`      | Max telemetry events to retain       |
 
 All standard textarea HTML attributes are also supported.
 
@@ -242,6 +330,8 @@ type CharacterRange = {
 | `setSelectionRange(start, end)` | Set text selection         |
 | `getValue()`                    | Get current value          |
 | `setValue(value)`               | Set value programmatically |
+| `scrollToPosition(pos, offset?, behavior?)` | Scroll to character position |
+| `exportForAI()`                 | Export debug report (requires `debug={true}`) |
 
 ## HighlightBuilder Utilities
 
@@ -268,6 +358,8 @@ Create a single selection highlight.
 ### `HighlightBuilder.lines(lines)`
 
 Create line-level highlights.
+
+## Styling
 
 DyeLight uses CSS-in-JS for core functionality but allows complete customization through CSS classes.
 

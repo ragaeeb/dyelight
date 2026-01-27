@@ -59,6 +59,7 @@ export type CharacterRange = {
  *       rows={10}
  *       className="my-editor"
  *       placeholder="Enter your code here..."
+ *       debug={true}
  *     />
  *   );
  * };
@@ -85,11 +86,16 @@ export interface DyeLightProps extends Omit<React.TextareaHTMLAttributes<HTMLTex
     rows?: number;
     /** Controlled value */
     value?: string;
+
+    /** Enable debug mode to collect telemetry data */
+    debug?: boolean;
+    /** Maximum number of telemetry events to retain in memory */
+    debugMaxEvents?: number;
 }
 
 /**
  * Methods exposed by the DyeLight component through its ref
- * Provides programmatic access to common textarea operations
+ * Provides programmatic access to common textarea operations and debug features
  * @example
  * ```tsx
  * const MyComponent = () => {
@@ -104,7 +110,20 @@ export interface DyeLightProps extends Omit<React.TextareaHTMLAttributes<HTMLTex
  *     console.log('Current value:', value);
  *   };
  *
- *   return <DyeLight ref={dyeLightRef} />;
+ *   const handleExportDebug = async () => {
+ *     const report = dyeLightRef.current?.exportForAI();
+ *     if (report) {
+ *       await navigator.clipboard.writeText(report);
+ *       alert('Debug report copied to clipboard');
+ *     }
+ *   };
+ *
+ *   return (
+ *     <>
+ *       <DyeLight ref={dyeLightRef} debug={true} />
+ *       <button onClick={handleExportDebug}>Export Debug Report</button>
+ *     </>
+ *   );
  * };
  * ```
  */
@@ -123,4 +142,7 @@ export type DyeLightRef = {
     setValue: (value: string) => void;
     /** Scrolls the character position into view with an optional pixel offset */
     scrollToPosition: (pos: number, offset?: number, behavior?: ScrollBehavior) => void;
+
+    /** Exports AI-optimized debug report as JSON string (requires debug mode) */
+    exportForAI: () => string;
 };

@@ -15,9 +15,7 @@ yarn-error.log*
 
 .env*
 
-.parcel-cache
 dist
 coverage
-.flaskenv*
-!.env.project
-!.env.vault
+
+storybook-static
