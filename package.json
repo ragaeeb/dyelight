@@ -53,7 +53,7 @@
         "url": "https://github.com/ragaeeb/dyelight.git"
     },
     "scripts": {
-        "build": "bunx tsc -p tsconfig.json --noEmit && tsdown",
+        "build": "tsdown",
         "format": "biome format --write .",
         "lint": "biome lint .",
         "storybook": "storybook dev -p 6006 --no-open",
