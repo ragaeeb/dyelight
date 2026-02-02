@@ -211,8 +211,6 @@ export type AIDebugReport = {
         browser: string;
         /** Platform identifier */
         platform: string;
-        /** React version */
-        reactVersion: string;
     };
 
     /** Analysis summary with detected issues */

@@ -1,11 +1,3 @@
-/**
- * @fileoverview AI-Optimized Telemetry System for DyeLight
- *
- * This format is specifically designed to be parsed by LLMs for debugging.
- * It includes rich context, clear narratives, and structured anomaly detection.
- */
-
-import React from 'react';
 import type { AIDebugReport, AITelemetryEvent } from './types';
 
 /**
@@ -16,17 +8,19 @@ function detectIssues(
     events: AITelemetryEvent[],
 ): AIDebugReport['summary']['detectedIssues'] {
     const detectedIssues: AIDebugReport['summary']['detectedIssues'] = [];
-
     for (const [issueType, count] of issueRegistry.entries()) {
+        const issueIndicators: Record<string, string> = {
+            large_paste: 'Large paste detected',
+            rapid_events: 'Rapid event',
+            state_mismatch: 'State mismatch',
+        };
+        const indicator = issueIndicators[issueType] ?? issueType;
         const relatedEvents = events
-            .map((e, i) => (e.anomalies.some((a) => a.includes(issueType)) ? i : -1))
+            .map((e, i) => (e.anomalies.some((a) => a.includes(indicator)) ? i : -1))
             .filter((i) => i !== -1);
-
         const firstOccurrence = relatedEvents.length > 0 ? events[relatedEvents[0]].timestampISO : '';
-
         let severity: 'critical' | 'warning' | 'info' = 'info';
         let issue = issueType;
-
         if (issueType === 'state_mismatch') {
             severity = 'critical';
             issue = 'State desynchronization between DOM and React detected';
@@ -37,15 +31,12 @@ function detectIssues(
             severity = 'warning';
             issue = 'Large paste operations detected (may trigger sync issues)';
         }
-
         detectedIssues.push({ firstOccurrence, issue, occurrenceCount: count, relatedEvents, severity });
     }
-
     detectedIssues.sort((a, b) => {
         const severityOrder = { critical: 0, info: 2, warning: 1 };
         return severityOrder[a.severity] - severityOrder[b.severity];
     });
-
     return detectedIssues;
 }
 
@@ -164,7 +155,7 @@ class ValueRegistry {
      */
     store(value: string): string {
         // Don't deduplicate small values
-        if (value.length < this.threshold) {
+        if (value.length <= this.threshold) {
             return value;
         }
 
@@ -387,7 +378,6 @@ export class AIOptimizedTelemetry {
                 componentVersion: '1.1.3',
                 generatedAt: new Date().toISOString(),
                 platform: navigator.platform,
-                reactVersion: (React as any).version ?? 'unknown',
                 timespan: {
                     durationMs: timespan,
                     end: lastEvent?.timestampISO ?? '',

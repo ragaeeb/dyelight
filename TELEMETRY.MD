@@ -281,7 +281,7 @@ If the telemetry isn't clear:
 
 1. **Enable debug BEFORE reproducing** - Can't capture events retroactively
 2. **Export immediately after bug** - Events are limited to maxEvents (default: 1000)
-3. **Look at timeSinceLastEvent** - Tight clusters (<5ms) indicate problems
+3. **Look at `timeSinceLastEvent`** - Tight clusters (<5ms) indicate problems
 4. **Check the last few events** - Often show the current broken state
 5. **Compare before/after values** - What actually changed?
 6. **Trust the auto-detection** - It catches 90% of issues
