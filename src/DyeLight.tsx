@@ -233,7 +233,7 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             () => ({
                 blur: () => textareaRef.current?.blur(),
                 exportForAI: () => {
-                    return telemetry.exportForAI(textareaRef, currentValue, textareaHeight, highlights, lineHighlights);
+                    return telemetry.exportForAI(textareaRef, currentValue, textareaHeight, highlights);
                 },
                 focus: () => textareaRef.current?.focus(),
                 getValue: () => currentValue,
@@ -263,7 +263,6 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
                 telemetry,
                 textareaHeight,
                 highlights,
-                lineHighlights,
             ],
         );
 

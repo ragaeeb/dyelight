@@ -43,3 +43,116 @@ To achieve pixel-perfect text overlays (for highlighting), the overlay `div` mus
 ### 3. ResizeObservation & Infinite Loops
 - **The Issue**: Using `ResizeObserver` to trigger layout sync or auto-resize is robust but dangerous. If the callback updates state/style that changes the element's size (e.g., auto-resize height), it immediately re-triggers the observer.
 - **The Fix**: Always debounce `ResizeObserver` callbacks using `requestAnimationFrame`. This breaks the synchronous feedback loop and batches layout thrashing.
+
+### 4. Paste Event Handling in Controlled Components
+- **The Issue**: When users paste content, calling `e.preventDefault()` AFTER reading clipboard data is too late—the browser has already inserted the raw clipboard text into the textarea DOM. This creates a race condition:
+  1. Browser pastes raw content into DOM (e.g., 40KB)
+  2. User's handler normalizes to smaller value (e.g., 12 chars)
+  3. React's `onChange` fires with the 40KB DOM value
+  4. React re-renders with the 12-char value
+  5. Brief window where DOM ≠ React state, causing visible flicker and state desync
+- **The Fix**: Call `e.preventDefault()` as the FIRST LINE in your paste handler, before reading clipboard data:
+  ```typescript
+  const handlePaste = (e: React.ClipboardEvent) => {
+      e.preventDefault(); // ← FIRST LINE - prevents browser from modifying DOM
+      const text = e.clipboardData.getData('text');
+      // ... process and normalize text
+      setTextValue(normalizedText);
+      // Manually update cursor position since we prevented default
+      setTimeout(() => {
+          target.setSelectionRange(newPos, newPos);
+      }, 0);
+  };
+  ```
+- **Anti-Pattern**: Using a ref flag (like `justPastedRef`) to suppress `onChange` doesn't prevent the race—the damage is already done when `onChange` fires with the wrong value.
+- **Related Telemetry Patterns**: Look for:
+  - Large `lengthDelta` in `onChange` events (e.g., 40K chars changed at once)
+  - `stateSnapshot.valuesMatch: false` immediately after user paste events
+  - Rapid events (<5ms apart) following a paste operation
+  - Events where DOM value is much larger than React value, then suddenly smaller
+
+### 5. Controlled Component Defensive Sync
+- **The Issue**: React's controlled components update the DOM asynchronously via the render cycle. During rapid state changes (like paste), there's a brief window where the DOM value doesn't match React state.
+- **The Fix**: In controlled mode, immediately sync the DOM value when handling state changes:
+  ```typescript
+  const handleChange = (newValue: string) => {
+      // Immediate DOM sync for controlled components
+      if (isControlled && textareaRef.current && textareaRef.current.value !== newValue) {
+          textareaRef.current.value = newValue;
+      }
+      // ... update state
+  };
+  ```
+- **Why**: This eliminates the async window and prevents `onChange` events from seeing stale DOM values.
+
+## Debugging with Telemetry
+
+### Reading Telemetry Reports
+When analyzing a telemetry export from `DyeLight`:
+
+1. **Check the Summary First**: The `summary.detectedIssues` section automatically flags common problems (state mismatches, race conditions, infinite loops).
+
+2. **Follow the Timeline**: Look at `timeline.stateChanges` in chronological order to see the sequence of state mutations. Focus on events marked `unexpected: true`.
+
+3. **Value Deduplication**: Large text values (>1000 chars) are stored in `valueRegistry` and referenced as `<REF:value_N>`. To see the actual value:
+   ```json
+   {
+     "stateSnapshot": {
+       "textareaValue": "<REF:value_0>",
+       "reactValue": "<REF:value_0>"
+     }
+   }
+   // Look up in:
+   "valueRegistry": {
+     "<REF:value_0>": "...actual 40KB text here..."
+   }
+   ```
+
+4. **Common Issue Patterns**:
+   - **State Mismatch**: `stateSnapshot.valuesMatch: false` indicates DOM and React are out of sync
+   - **Rapid Events**: Events <5ms apart suggest race conditions or double-bound handlers
+   - **Resize Loop**: More resize events than value changes indicates infinite `ResizeObserver` loop
+   - **Large Paste**: `lengthDelta` >100 chars in a single `onChange` event suggests paste handling issues
+
+5. **Event Categories**:
+   - `user`: Direct user interactions (typing, pasting)
+   - `state`: Programmatic state changes (setValue, etc.)
+   - `sync`: Layout synchronization operations
+   - `system`: Periodic snapshots and background tasks
+
+### Telemetry Best Practices
+- Keep `maxEvents` reasonable (default: 1000) to avoid memory bloat
+- Enable debug mode only when investigating issues, not in production
+- Export reports immediately after reproducing the bug
+- Look for anomalies in the first few events—initial sync issues often indicate setup problems
+- Check `timeSinceLastEvent` to identify performance bottlenecks
+
+### Reducing Cognitive Complexity
+When extending telemetry or similar diagnostic code:
+- Extract issue detection logic into separate functions (e.g., `detectIssues()`, `detectSuspiciousPatterns()`)
+- Build timelines and reports in focused utility functions
+- Keep the main analysis function as a composition of smaller pieces
+- Target cognitive complexity <15 (Biome's default threshold)
+- Each function should do ONE thing: detect issues OR build timeline OR format report
+
+### Common Pitfalls
+1. **Forgetting to deduplicate large values**: Without deduplication, a single 40KB paste creates a 40MB JSON report after 1000 events
+2. **Over-logging**: Logging every keystroke with full context creates noise. Focus on state changes and anomalies.
+3. **Ignoring rapid events**: Events <5ms apart are often the smoking gun for race conditions
+4. **Not checking valueRegistry**: When you see `<REF:value_N>`, always look it up—the actual value matters
+5. **Dismissing "info" severity issues**: Even info-level issues can indicate patterns that become critical under load
+
+## Testing Paste Handling
+When testing paste functionality:
+1. Test with large pastes (>10KB) to expose race conditions
+2. Test rapid consecutive pastes to expose state management issues  
+3. Enable debug mode and verify no `stateSnapshot.valuesMatch: false` events
+4. Check that cursor position is correct after paste
+5. Verify no visual flicker or content flash during paste
+
+## Performance Considerations
+- Debounce `ResizeObserver` callbacks with `requestAnimationFrame`
+- Avoid synchronous DOM queries in tight loops
+- Use `useMemo` for expensive highlight calculations
+- Keep telemetry disabled in production builds
+- Consider virtualizing for very large documents (>100KB)
