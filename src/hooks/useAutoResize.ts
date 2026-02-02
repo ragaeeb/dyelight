@@ -42,7 +42,7 @@ export const createAutoResizeHandler = (
 export const useAutoResize = (
     enableAutoResize: boolean,
     telemetry?: AIOptimizedTelemetry,
-    textareaRef?: React.RefObject<HTMLTextAreaElement>,
+    textareaRef?: React.RefObject<HTMLTextAreaElement | null>,
     getCurrentValue?: () => string,
     isControlled?: boolean,
 ) => {

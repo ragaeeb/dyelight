@@ -47,9 +47,14 @@ export const handleChangeValue = (
     isControlled: boolean,
     setInternalValue: (value: string) => void,
     onChange?: (value: string) => void,
+    textarea?: HTMLTextAreaElement | null,
 ) => {
     if (newValue === currentValue) {
         return;
+    }
+
+    if (isControlled && textarea && textarea.value !== newValue) {
+        textarea.value = newValue;
     }
 
     if (!isControlled) {
@@ -104,10 +109,10 @@ export const useTextareaValue = (
     defaultValue = '',
     onChange?: (value: string) => void,
     telemetry?: AIOptimizedTelemetry,
-    textareaRef?: React.RefObject<HTMLTextAreaElement>,
+    textareaRef?: React.RefObject<HTMLTextAreaElement | null>,
     getHeight?: () => number | undefined,
 ) => {
-    const internalTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const internalTextareaRef = useRef<HTMLTextAreaElement | null>(null);
     const [internalValue, setInternalValue] = useState(value ?? defaultValue);
 
     const isControlled = value !== undefined;
@@ -137,7 +142,14 @@ export const useTextareaValue = (
                 isControlled,
             );
 
-            handleChangeValue(newValue, currentValue, isControlled, setInternalValue, onChange);
+            handleChangeValue(
+                newValue,
+                currentValue,
+                isControlled,
+                setInternalValue,
+                onChange,
+                actualTextareaRef.current,
+            );
         },
         [currentValue, isControlled, onChange, telemetry, actualTextareaRef, getHeight],
     );

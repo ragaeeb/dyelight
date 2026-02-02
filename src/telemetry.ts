@@ -1,155 +1,194 @@
-/**
- * @fileoverview AI-Optimized Telemetry System for DyeLight
- *
- * This format is specifically designed to be parsed by LLMs for debugging.
- * It includes rich context, clear narratives, and structured anomaly detection.
- */
-
-import React from 'react';
+import type { AIDebugReport, AITelemetryEvent } from './types';
 
 /**
- * Represents a single telemetry event with full context
+ * Detects issues from the issue registry and creates structured issue records
  */
-export type AITelemetryEvent = {
-    /** Unix timestamp in milliseconds */
-    timestamp: number;
-    /** ISO 8601 formatted timestamp */
-    timestampISO: string;
-    /** Milliseconds since the last event, or null for first event */
-    timeSinceLastEvent: number | null;
-    /** Event type identifier */
-    type: string;
-    /** Event category for grouping and analysis */
-    category: 'state' | 'dom' | 'sync' | 'user' | 'system';
-    /** Human-readable description of the event */
-    description: string;
-    /** Event-specific data payload */
-    data: Record<string, unknown>;
-    /** Complete state snapshot at the time of this event */
-    stateSnapshot: {
-        /** Actual value in the textarea DOM element */
-        textareaValue: string;
-        /** Value in React state */
-        reactValue: string;
-        /** Whether DOM and React state are synchronized */
-        valuesMatch: boolean;
-        /** Current height of the textarea in pixels */
-        textareaHeight: number | undefined;
-        /** Whether the component is in controlled mode */
-        isControlled: boolean;
-    };
-    /** Detected anomalies or issues at this event */
-    anomalies: string[];
-};
-
-/**
- * Complete AI-readable debug report structure
- */
-export type AIDebugReport = {
-    /** Metadata about the report and environment */
-    metadata: {
-        /** When this report was generated */
-        generatedAt: string;
-        /** DyeLight version */
-        componentVersion: string;
-        /** Total number of events recorded */
-        totalEvents: number;
-        /** Time range covered by events */
-        timespan: {
-            /** ISO timestamp of first event */
-            start: string;
-            /** ISO timestamp of last event */
-            end: string;
-            /** Duration in milliseconds */
-            durationMs: number;
+function detectIssues(
+    issueRegistry: Map<string, number>,
+    events: AITelemetryEvent[],
+): AIDebugReport['summary']['detectedIssues'] {
+    const detectedIssues: AIDebugReport['summary']['detectedIssues'] = [];
+    for (const [issueType, count] of issueRegistry.entries()) {
+        const issueIndicators: Record<string, string> = {
+            large_paste: 'Large paste detected',
+            rapid_events: 'Rapid event',
+            state_mismatch: 'State mismatch',
         };
-        /** Browser user agent string */
-        browser: string;
-        /** Platform identifier */
-        platform: string;
-        /** React version */
-        reactVersion: string;
-    };
+        const indicator = issueIndicators[issueType] ?? issueType;
+        const relatedEvents = events
+            .map((e, i) => (e.anomalies.some((a) => a.includes(indicator)) ? i : -1))
+            .filter((i) => i !== -1);
+        const firstOccurrence = relatedEvents.length > 0 ? events[relatedEvents[0]].timestampISO : '';
+        let severity: 'critical' | 'warning' | 'info' = 'info';
+        let issue = issueType;
+        if (issueType === 'state_mismatch') {
+            severity = 'critical';
+            issue = 'State desynchronization between DOM and React detected';
+        } else if (issueType === 'rapid_events') {
+            severity = count > 10 ? 'warning' : 'info';
+            issue = 'Rapid successive events detected (possible race condition)';
+        } else if (issueType === 'large_paste') {
+            severity = 'warning';
+            issue = 'Large paste operations detected (may trigger sync issues)';
+        }
+        detectedIssues.push({ firstOccurrence, issue, occurrenceCount: count, relatedEvents, severity });
+    }
+    detectedIssues.sort((a, b) => {
+        const severityOrder = { critical: 0, info: 2, warning: 1 };
+        return severityOrder[a.severity] - severityOrder[b.severity];
+    });
+    return detectedIssues;
+}
 
-    /** Analysis summary with detected issues */
-    summary: {
-        /** High-level description of findings */
-        description: string;
-        /** List of detected issues sorted by severity */
-        detectedIssues: Array<{
-            /** Issue severity level */
-            severity: 'critical' | 'warning' | 'info';
-            /** Issue description */
-            issue: string;
-            /** When this issue first occurred */
-            firstOccurrence: string;
-            /** How many times this issue occurred */
-            occurrenceCount: number;
-            /** Event indices where this issue occurred */
-            relatedEvents: number[];
-        }>;
-        /** Suspicious patterns detected in event sequences */
-        suspiciousPatterns: string[];
-        /** Recommended actions to resolve issues */
-        recommendations: string[];
-    };
+/**
+ * Detects suspicious patterns in the event sequence
+ */
+function detectSuspiciousPatterns(events: AITelemetryEvent[]): string[] {
+    const suspiciousPatterns: string[] = [];
 
-    /** Different views of the event timeline */
-    timeline: {
-        /** User interactions and their impacts */
-        userActions: Array<{
-            /** When the action occurred */
-            timestamp: string;
-            /** What the user did */
-            action: string;
-            /** Number of state changes triggered */
-            resultingStateChanges: number;
-        }>;
-        /** All state mutations in chronological order */
-        stateChanges: Array<{
-            /** When the change occurred */
-            timestamp: string;
-            /** Type of state change */
-            type: string;
-            /** Previous value */
-            before: unknown;
-            /** New value */
-            after: unknown;
-            /** Whether this change was unexpected */
-            unexpected: boolean;
-        }>;
-        /** Synchronization operations between textarea and overlay */
-        syncOperations: Array<{
-            /** When the sync occurred */
-            timestamp: string;
-            /** Type of synchronization */
-            operation: string;
-            /** Whether sync was successful */
-            success: boolean;
-            /** Additional sync details */
-            details: Record<string, unknown>;
-        }>;
-    };
+    const resizeEvents = events.filter((e) => e.type === 'autoResize');
+    const valueChanges = events.filter((e) => e.type === 'onChange');
+    if (resizeEvents.length > valueChanges.length * 2) {
+        suspiciousPatterns.push(
+            `Excessive resize operations (${resizeEvents.length} resizes vs ${valueChanges.length} value changes). ` +
+                `May indicate infinite ResizeObserver loop.`,
+        );
+    }
 
-    /** Complete chronological list of all events */
-    events: AITelemetryEvent[];
+    const syncEvents = events.filter((e) => e.category === 'sync');
+    if (syncEvents.length > events.length * 0.3) {
+        suspiciousPatterns.push(
+            `High frequency of sync operations (${syncEvents.length}/${events.length} events). ` +
+                `May indicate layout thrashing.`,
+        );
+    }
 
-    /** Final state at time of export */
-    finalState: {
-        /** Current textarea DOM value */
-        textareaValue: string;
-        /** Current React state value */
-        reactValue: string;
-        /** Whether values are synchronized */
-        inSync: boolean;
-        /** Current height in pixels */
-        height: number | undefined;
-        /** Current scroll position */
-        scrollPosition: { top: number; left: number };
-        /** Current highlights configuration */
-        highlights: unknown[];
+    return suspiciousPatterns;
+}
+
+/**
+ * Generates recommendations based on detected issues and patterns
+ */
+function generateRecommendations(
+    detectedIssues: AIDebugReport['summary']['detectedIssues'],
+    suspiciousPatterns: string[],
+): string[] {
+    const recommendations: string[] = [];
+
+    if (detectedIssues.some((i) => i.issue.includes('desynchronization'))) {
+        recommendations.push(
+            'State desynchronization detected. Check if multiple onChange handlers are bound or ' +
+                'if external code is modifying the textarea DOM directly.',
+        );
+    }
+
+    if (suspiciousPatterns.some((p) => p.includes('ResizeObserver'))) {
+        recommendations.push(
+            'Possible infinite ResizeObserver loop. Ensure resize operations are debounced with requestAnimationFrame.',
+        );
+    }
+
+    if (detectedIssues.some((i) => i.issue.includes('race condition'))) {
+        recommendations.push(
+            'Rapid events detected. Consider debouncing onChange handlers or checking for double-bound event listeners.',
+        );
+    }
+
+    if (detectedIssues.some((i) => i.issue.includes('Large paste'))) {
+        recommendations.push(
+            'Large paste operations detected. Ensure e.preventDefault() is called BEFORE reading clipboard data ' +
+                'in your onPaste handler to prevent the browser from inserting raw content into the DOM.',
+        );
+    }
+
+    return recommendations;
+}
+
+/**
+ * Builds the timeline view from events
+ */
+function buildTimeline(events: AITelemetryEvent[]): AIDebugReport['timeline'] {
+    return {
+        stateChanges: events
+            .filter((e) => e.category === 'state')
+            .map((e) => ({
+                after: e.data.newValue,
+                before: e.data.previousValue,
+                timestamp: e.timestampISO,
+                type: e.type,
+                unexpected: e.anomalies.length > 0,
+            })),
+
+        syncOperations: events
+            .filter((e) => e.category === 'sync')
+            .map((e) => ({
+                details: e.data,
+                operation: e.type,
+                success: !e.anomalies.length,
+                timestamp: e.timestampISO,
+            })),
+
+        userActions: events
+            .filter((e) => e.category === 'user')
+            .map((e) => ({
+                action: e.description,
+                resultingStateChanges: events.filter(
+                    (se) => se.timestamp > e.timestamp && se.timestamp < e.timestamp + 100 && se.category === 'state',
+                ).length,
+                timestamp: e.timestampISO,
+            })),
     };
-};
+}
+
+/**
+ * Registry for deduplicating large text values
+ * Stores values >1000 chars once and returns a reference key
+ */
+class ValueRegistry {
+    private registry = new Map<string, string>();
+    private reverseRegistry = new Map<string, string>();
+    private nextId = 0;
+    private readonly threshold = 1000; // Only deduplicate values >1KB
+
+    /**
+     * Stores a value and returns either the value itself (if small) or a reference
+     */
+    store(value: string): string {
+        // Don't deduplicate small values
+        if (value.length <= this.threshold) {
+            return value;
+        }
+
+        // Check if we've already stored this exact value
+        if (this.reverseRegistry.has(value)) {
+            return this.reverseRegistry.get(value)!;
+        }
+
+        // Store new value
+        const ref = `<REF:value_${this.nextId}>`;
+        this.registry.set(ref, value);
+        this.reverseRegistry.set(value, ref);
+        this.nextId++;
+
+        return ref;
+    }
+
+    /**
+     * Gets the actual registry for export
+     */
+    getRegistry(): { [key: string]: string } {
+        return Object.fromEntries(this.registry);
+    }
+
+    /**
+     * Clears the registry
+     */
+    clear() {
+        this.registry.clear();
+        this.reverseRegistry.clear();
+        this.nextId = 0;
+    }
+}
 
 /**
  * AI-optimized telemetry collector for the DyeLight component.
@@ -162,6 +201,7 @@ export class AIOptimizedTelemetry {
     private enabled = false;
     private lastEventTimestamp: number | null = null;
     private issueRegistry = new Map<string, number>();
+    private valueRegistry = new ValueRegistry();
 
     /**
      * Creates a new telemetry instance
@@ -214,7 +254,9 @@ export class AIOptimizedTelemetry {
         const anomalies: string[] = [];
 
         if (!valuesMatch) {
-            anomalies.push(`State mismatch: DOM="${textareaValue}" vs React="${reactValue}"`);
+            anomalies.push(
+                `State mismatch: DOM="${textareaValue.slice(0, 50)}..." vs React="${reactValue.slice(0, 50)}..."`,
+            );
             this.issueRegistry.set('state_mismatch', (this.issueRegistry.get('state_mismatch') ?? 0) + 1);
         }
 
@@ -231,12 +273,22 @@ export class AIOptimizedTelemetry {
             }
         }
 
+        // Deduplicate large values using the registry
+        const deduplicatedTextareaValue = this.valueRegistry.store(textareaValue);
+        const deduplicatedReactValue = this.valueRegistry.store(reactValue);
+
         const event: AITelemetryEvent = {
             anomalies,
             category,
             data,
             description: this.generateDescription(type, category, data),
-            stateSnapshot: { isControlled, reactValue, textareaHeight, textareaValue, valuesMatch },
+            stateSnapshot: {
+                isControlled,
+                reactValue: deduplicatedReactValue,
+                textareaHeight,
+                textareaValue: deduplicatedTextareaValue,
+                valuesMatch,
+            },
             timeSinceLastEvent,
             timestamp: now,
             timestampISO: new Date(now).toISOString(),
@@ -285,7 +337,6 @@ export class AIOptimizedTelemetry {
      * @param currentValue Current React state value
      * @param textareaHeight Current textarea height
      * @param highlights Current highlights configuration
-     * @param lineHighlights Current line highlights configuration
      * @returns Complete debug report
      */
     generateAIReport(
@@ -293,113 +344,19 @@ export class AIOptimizedTelemetry {
         currentValue: string | undefined,
         textareaHeight: number | undefined,
         highlights: unknown[],
-        lineHighlights: Record<number, string>,
     ): AIDebugReport {
         const firstEvent = this.events[0];
         const lastEvent = this.events[this.events.length - 1];
         const timespan = lastEvent && firstEvent ? lastEvent.timestamp - firstEvent.timestamp : 0;
 
-        const detectedIssues: AIDebugReport['summary']['detectedIssues'] = [];
+        const detectedIssues = detectIssues(this.issueRegistry, this.events);
+        const suspiciousPatterns = detectSuspiciousPatterns(this.events);
+        const recommendations = generateRecommendations(detectedIssues, suspiciousPatterns);
+        const timeline = buildTimeline(this.events);
 
-        for (const [issueType, count] of this.issueRegistry.entries()) {
-            const relatedEvents = this.events
-                .map((e, i) => (e.anomalies.some((a) => a.includes(issueType)) ? i : -1))
-                .filter((i) => i !== -1);
-
-            const firstOccurrence = relatedEvents.length > 0 ? this.events[relatedEvents[0]].timestampISO : '';
-
-            let severity: 'critical' | 'warning' | 'info' = 'info';
-            let issue = issueType;
-
-            if (issueType === 'state_mismatch') {
-                severity = 'critical';
-                issue = 'State desynchronization between DOM and React detected';
-            } else if (issueType === 'rapid_events') {
-                severity = count > 10 ? 'warning' : 'info';
-                issue = 'Rapid successive events detected (possible race condition)';
-            } else if (issueType === 'large_paste') {
-                severity = 'warning';
-                issue = 'Large paste operations detected (may trigger sync issues)';
-            }
-
-            detectedIssues.push({ firstOccurrence, issue, occurrenceCount: count, relatedEvents, severity });
-        }
-
-        detectedIssues.sort((a, b) => {
-            const severityOrder = { critical: 0, info: 2, warning: 1 };
-            return severityOrder[a.severity] - severityOrder[b.severity];
-        });
-
-        const suspiciousPatterns: string[] = [];
-
-        const resizeEvents = this.events.filter((e) => e.type === 'autoResize');
-        const valueChanges = this.events.filter((e) => e.type === 'onChange');
-        if (resizeEvents.length > valueChanges.length * 2) {
-            suspiciousPatterns.push(
-                `Excessive resize operations (${resizeEvents.length} resizes vs ${valueChanges.length} value changes). ` +
-                    `May indicate infinite ResizeObserver loop.`,
-            );
-        }
-
-        const syncEvents = this.events.filter((e) => e.category === 'sync');
-        if (syncEvents.length > this.events.length * 0.3) {
-            suspiciousPatterns.push(
-                `High frequency of sync operations (${syncEvents.length}/${this.events.length} events). ` +
-                    `May indicate layout thrashing.`,
-            );
-        }
-
-        const recommendations: string[] = [];
-
-        if (detectedIssues.some((i) => i.issue.includes('desynchronization'))) {
-            recommendations.push(
-                'State desynchronization detected. Check if multiple onChange handlers are bound or ' +
-                    'if external code is modifying the textarea DOM directly.',
-            );
-        }
-
-        if (suspiciousPatterns.some((p) => p.includes('ResizeObserver'))) {
-            recommendations.push(
-                'Possible infinite ResizeObserver loop. Ensure resize operations are debounced with requestAnimationFrame.',
-            );
-        }
-
-        if (detectedIssues.some((i) => i.issue.includes('race condition'))) {
-            recommendations.push(
-                'Rapid events detected. Consider debouncing onChange handlers or checking for double-bound event listeners.',
-            );
-        }
-
-        const timeline = {
-            stateChanges: this.events
-                .filter((e) => e.category === 'state')
-                .map((e) => ({
-                    after: e.data.newValue,
-                    before: e.data.previousValue,
-                    timestamp: e.timestampISO,
-                    type: e.type,
-                    unexpected: e.anomalies.length > 0,
-                })),
-
-            syncOperations: this.events
-                .filter((e) => e.category === 'sync')
-                .map((e) => ({
-                    details: e.data,
-                    operation: e.type,
-                    success: !e.anomalies.length,
-                    timestamp: e.timestampISO,
-                })),
-            userActions: this.events
-                .filter((e) => e.category === 'user')
-                .map((e) => ({
-                    action: e.description,
-                    resultingStateChanges: this.events.filter(
-                        (se) =>
-                            se.timestamp > e.timestamp && se.timestamp < e.timestamp + 100 && se.category === 'state',
-                    ).length,
-                    timestamp: e.timestampISO,
-                })),
-        };
+        // Deduplicate final state values
+        const finalTextareaValue = this.valueRegistry.store(textareaRef.current?.value ?? '');
+        const finalReactValue = this.valueRegistry.store(currentValue ?? '');
 
         return {
             events: this.events,
@@ -408,19 +365,19 @@ export class AIOptimizedTelemetry {
                 height: textareaHeight,
                 highlights,
                 inSync: (textareaRef.current?.value ?? '') === (currentValue ?? ''),
-                reactValue: currentValue ?? '',
+                reactValue: finalReactValue,
                 scrollPosition: {
                     left: textareaRef.current?.scrollLeft ?? 0,
                     top: textareaRef.current?.scrollTop ?? 0,
                 },
-                textareaValue: textareaRef.current?.value ?? '',
+                textareaValue: finalTextareaValue,
             },
+
             metadata: {
                 browser: navigator.userAgent,
                 componentVersion: '1.1.3',
                 generatedAt: new Date().toISOString(),
                 platform: navigator.platform,
-                reactVersion: (React as any).version ?? 'unknown',
                 timespan: {
                     durationMs: timespan,
                     end: lastEvent?.timestampISO ?? '',
@@ -440,6 +397,8 @@ export class AIOptimizedTelemetry {
             },
 
             timeline,
+
+            valueRegistry: this.valueRegistry.getRegistry(),
         };
     }
 
@@ -449,7 +408,6 @@ export class AIOptimizedTelemetry {
      * @param currentValue Current React state value
      * @param textareaHeight Current textarea height
      * @param highlights Current highlights configuration
-     * @param lineHighlights Current line highlights configuration
      * @returns JSON string containing debug report and AI instructions
      */
     exportForAI(
@@ -457,14 +415,16 @@ export class AIOptimizedTelemetry {
         currentValue: string | undefined,
         textareaHeight: number | undefined,
         highlights: unknown[],
-        lineHighlights: Record<number, string>,
     ): string {
-        const report = this.generateAIReport(textareaRef, currentValue, textareaHeight, highlights, lineHighlights);
+        const report = this.generateAIReport(textareaRef, currentValue, textareaHeight, highlights);
 
         return JSON.stringify(
             {
                 aiInstructions: {
                     commonIssues: {
+                        largePaste:
+                            'Large paste operations where e.preventDefault() is called AFTER clipboard data is read - ' +
+                            'browser inserts raw text into DOM before React state updates',
                         rapidEvents: 'Events firing <5ms apart - possible race condition or double-bound handlers',
                         resizeLoop: 'Excessive resize operations - likely infinite ResizeObserver loop',
                         stateMismatch:
@@ -476,16 +436,24 @@ export class AIOptimizedTelemetry {
                         finalState: 'Current state at time of export',
                         'summary.detectedIssues': 'Automatically detected problems, sorted by severity',
                         'timeline.stateChanges': 'Chronological view of all state mutations',
+                        valueRegistry: 'Deduplicated text values - references like <REF:value_0> point to entries here',
                     },
                     purpose:
                         'This is a debug report from the DyeLight React component. ' +
                         'A textarea with highlighting overlay is experiencing synchronization issues.',
+                    valueDeduplication:
+                        'IMPORTANT: Text values longer than 1000 characters are stored in valueRegistry and referenced as <REF:value_N>. ' +
+                        'When you see <REF:value_0> in stateSnapshot.textareaValue, look up the actual value in debugReport.valueRegistry["<REF:value_0>"]. ' +
+                        'This optimization prevents the JSON from becoming huge when users paste large blocks of text. ' +
+                        'Example: If textareaValue is "<REF:value_0>" and valueRegistry is {"<REF:value_0>": "...40KB of text..."}, ' +
+                        'then the actual textarea value is that 40KB text.',
                     yourTask: [
                         '1. Review the summary.detectedIssues for critical problems',
                         '2. Examine timeline.stateChanges for unexpected state transitions',
                         '3. Look for patterns in events where stateSnapshot.valuesMatch is false',
                         '4. Check for rapid events (<5ms apart) that might indicate race conditions',
-                        '5. Identify the root cause and suggest specific code fixes',
+                        '5. If you see <REF:value_N> references, look them up in valueRegistry',
+                        '6. Identify the root cause and suggest specific code fixes',
                     ],
                 },
                 debugReport: report,
@@ -502,5 +470,6 @@ export class AIOptimizedTelemetry {
         this.events = [];
         this.issueRegistry.clear();
         this.lastEventTimestamp = null;
+        this.valueRegistry.clear();
     }
 }

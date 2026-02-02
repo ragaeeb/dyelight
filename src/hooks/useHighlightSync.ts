@@ -92,7 +92,7 @@ export const syncHighlightStyles = (
  */
 export const useHighlightSync = (
     telemetry?: AIOptimizedTelemetry,
-    textareaRef?: React.RefObject<HTMLTextAreaElement>,
+    textareaRef?: React.RefObject<HTMLTextAreaElement | null>,
     getCurrentValue?: () => string,
     getHeight?: () => number | undefined,
     isControlled?: boolean,
