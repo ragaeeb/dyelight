@@ -24,11 +24,13 @@ export const syncValueWithDOM = (
         return;
     }
 
+    if (isControlled) {
+        return;
+    }
+
     const domValue = textarea.value;
     if (domValue !== currentValue) {
-        if (!isControlled) {
-            setInternalValue(domValue);
-        }
+        setInternalValue(domValue);
         onChange?.(domValue);
     }
 };
@@ -47,17 +49,15 @@ export const handleChangeValue = (
     isControlled: boolean,
     setInternalValue: (value: string) => void,
     onChange?: (value: string) => void,
-    textarea?: HTMLTextAreaElement | null,
+    setRenderValue?: (value: string) => void,
 ) => {
     if (newValue === currentValue) {
         return;
     }
 
-    if (isControlled && textarea && textarea.value !== newValue) {
-        textarea.value = newValue;
-    }
-
-    if (!isControlled) {
+    if (isControlled) {
+        setRenderValue?.(newValue);
+    } else {
         setInternalValue(newValue);
     }
 
@@ -78,6 +78,7 @@ export const applySetValue = (
     isControlled: boolean,
     setInternalValue: (value: string) => void,
     onChange?: (value: string) => void,
+    setRenderValue?: (value: string) => void,
 ) => {
     if (!textarea) {
         return;
@@ -85,7 +86,9 @@ export const applySetValue = (
 
     textarea.value = newValue;
 
-    if (!isControlled) {
+    if (isControlled) {
+        setRenderValue?.(newValue);
+    } else {
         setInternalValue(newValue);
     }
 
@@ -114,9 +117,10 @@ export const useTextareaValue = (
 ) => {
     const internalTextareaRef = useRef<HTMLTextAreaElement | null>(null);
     const [internalValue, setInternalValue] = useState(value ?? defaultValue);
+    const [renderValue, setRenderValue] = useState(value ?? defaultValue);
 
     const isControlled = value !== undefined;
-    const currentValue = isControlled ? (value ?? '') : internalValue;
+    const currentValue = isControlled ? renderValue : internalValue;
     const actualTextareaRef = textareaRef ?? internalTextareaRef;
 
     const syncValueWithDOMCallback = useCallback(() => {
@@ -142,14 +146,7 @@ export const useTextareaValue = (
                 isControlled,
             );
 
-            handleChangeValue(
-                newValue,
-                currentValue,
-                isControlled,
-                setInternalValue,
-                onChange,
-                actualTextareaRef.current,
-            );
+            handleChangeValue(newValue, currentValue, isControlled, setInternalValue, onChange, setRenderValue);
         },
         [currentValue, isControlled, onChange, telemetry, actualTextareaRef, getHeight],
     );
@@ -166,7 +163,7 @@ export const useTextareaValue = (
                 isControlled,
             );
 
-            applySetValue(actualTextareaRef.current, newValue, isControlled, setInternalValue, onChange);
+            applySetValue(actualTextareaRef.current, newValue, isControlled, setInternalValue, onChange, setRenderValue);
         },
         [isControlled, onChange, telemetry, actualTextareaRef, getHeight, currentValue],
     );
@@ -176,10 +173,15 @@ export const useTextareaValue = (
     }, [syncValueWithDOMCallback]);
 
     useEffect(() => {
-        if (isControlled && actualTextareaRef.current && actualTextareaRef.current.value !== currentValue) {
-            actualTextareaRef.current.value = currentValue;
+        if (!isControlled) {
+            return;
         }
-    }, [isControlled, currentValue, actualTextareaRef]);
+
+        const nextValue = value ?? '';
+        if (nextValue !== renderValue) {
+            setRenderValue(nextValue);
+        }
+    }, [isControlled, value, renderValue]);
 
     useEffect(() => {
         if (actualTextareaRef.current && actualTextareaRef.current.value !== currentValue) {

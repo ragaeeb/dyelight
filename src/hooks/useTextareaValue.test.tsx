@@ -33,6 +33,20 @@ describe('textarea value helpers', () => {
             false,
             (value) => changes.push(value),
             (value) => changes.push(`event:${value}`),
+            undefined,
+        );
+        expect(changes).toEqual(['next', 'event:next']);
+    });
+
+    it('handleChangeValue updates render value when controlled', () => {
+        const changes: string[] = [];
+        handleChangeValue(
+            'next',
+            'current',
+            true,
+            () => undefined,
+            (value) => changes.push(`event:${value}`),
+            (value) => changes.push(value),
         );
         expect(changes).toEqual(['next', 'event:next']);
     });
@@ -46,6 +60,21 @@ describe('textarea value helpers', () => {
             false,
             (value) => updates.push(value),
             (value) => updates.push(`event:${value}`),
+        );
+        expect(textarea.value).toBe('set');
+        expect(updates).toEqual(['set', 'event:set']);
+    });
+
+    it('applySetValue updates render value when controlled', () => {
+        const textarea = { value: 'start' } as unknown as HTMLTextAreaElement;
+        const updates: string[] = [];
+        applySetValue(
+            textarea,
+            'set',
+            true,
+            () => undefined,
+            (value) => updates.push(`event:${value}`),
+            (value) => updates.push(value),
         );
         expect(textarea.value).toBe('set');
         expect(updates).toEqual(['set', 'event:set']);
