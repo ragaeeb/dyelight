@@ -163,7 +163,14 @@ export const useTextareaValue = (
                 isControlled,
             );
 
-            applySetValue(actualTextareaRef.current, newValue, isControlled, setInternalValue, onChange, setRenderValue);
+            applySetValue(
+                actualTextareaRef.current,
+                newValue,
+                isControlled,
+                setInternalValue,
+                onChange,
+                setRenderValue,
+            );
         },
         [isControlled, onChange, telemetry, actualTextareaRef, getHeight, currentValue],
     );

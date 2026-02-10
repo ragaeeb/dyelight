@@ -1,3 +1,4 @@
+import { version } from '@/../package.json';
 import type { AIDebugReport, AITelemetryEvent } from './types';
 
 /**
@@ -253,14 +254,17 @@ export class AIOptimizedTelemetry {
 
         const anomalies: string[] = [];
 
-        if (!valuesMatch) {
+        // Skip mismatch detection during onChange: the browser updates the DOM before
+        // React state, so a transient mismatch is expected for controlled components.
+        const isOnChangeEvent = category === 'user' && type === 'onChange';
+        if (!valuesMatch && !isOnChangeEvent) {
             anomalies.push(
                 `State mismatch: DOM="${textareaValue.slice(0, 50)}..." vs React="${reactValue.slice(0, 50)}..."`,
             );
             this.issueRegistry.set('state_mismatch', (this.issueRegistry.get('state_mismatch') ?? 0) + 1);
         }
 
-        if (timeSinceLastEvent !== null && timeSinceLastEvent < 5) {
+        if (timeSinceLastEvent !== null && timeSinceLastEvent < 2) {
             anomalies.push(`Rapid event: ${timeSinceLastEvent}ms since last event`);
             this.issueRegistry.set('rapid_events', (this.issueRegistry.get('rapid_events') ?? 0) + 1);
         }
@@ -375,7 +379,7 @@ export class AIOptimizedTelemetry {
 
             metadata: {
                 browser: navigator.userAgent,
-                componentVersion: '1.1.3',
+                componentVersion: version,
                 generatedAt: new Date().toISOString(),
                 platform: navigator.platform,
                 timespan: {
@@ -425,7 +429,7 @@ export class AIOptimizedTelemetry {
                         largePaste:
                             'Large paste operations where e.preventDefault() is called AFTER clipboard data is read - ' +
                             'browser inserts raw text into DOM before React state updates',
-                        rapidEvents: 'Events firing <5ms apart - possible race condition or double-bound handlers',
+                        rapidEvents: 'Events firing <2ms apart - possible race condition or double-bound handlers',
                         resizeLoop: 'Excessive resize operations - likely infinite ResizeObserver loop',
                         stateMismatch:
                             'DOM value differs from React state - likely caused by multiple onChange handlers or direct DOM manipulation',
@@ -451,7 +455,7 @@ export class AIOptimizedTelemetry {
                         '1. Review the summary.detectedIssues for critical problems',
                         '2. Examine timeline.stateChanges for unexpected state transitions',
                         '3. Look for patterns in events where stateSnapshot.valuesMatch is false',
-                        '4. Check for rapid events (<5ms apart) that might indicate race conditions',
+                        '4. Check for rapid events (<2ms apart) that might indicate race conditions',
                         '5. If you see <REF:value_N> references, look them up in valueRegistry',
                         '6. Identify the root cause and suggest specific code fixes',
                     ],

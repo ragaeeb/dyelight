@@ -67,8 +67,8 @@ To achieve pixel-perfect text overlays (for highlighting), the overlay `div` mus
 - **Anti-Pattern**: Using a ref flag (like `justPastedRef`) to suppress `onChange` doesn't prevent the race—the damage is already done when `onChange` fires with the wrong value.
 - **Related Telemetry Patterns**: Look for:
   - Large `lengthDelta` in `onChange` events (e.g., 40K chars changed at once)
-  - `stateSnapshot.valuesMatch: false` immediately after user paste events
-  - Rapid events (<5ms apart) following a paste operation
+  - `stateSnapshot.valuesMatch: false` on non-`onChange` events (e.g., `syncStyles`) immediately after user paste events
+  - Rapid events (<2ms apart) following a paste operation
   - Events where DOM value is much larger than React value, then suddenly smaller
 
 ### 5. Controlled Component Defensive Sync
@@ -109,8 +109,8 @@ When analyzing a telemetry export from `DyeLight`:
    ```
 
 4. **Common Issue Patterns**:
-   - **State Mismatch**: `stateSnapshot.valuesMatch: false` indicates DOM and React are out of sync
-   - **Rapid Events**: Events <5ms apart suggest race conditions or double-bound handlers
+   - **State Mismatch**: `stateSnapshot.valuesMatch: false` on non-`onChange` events indicates DOM and React are out of sync. During `onChange`, a transient mismatch is normal (see "Known Benign Patterns" below).
+   - **Rapid Events**: Events <2ms apart suggest race conditions or double-bound handlers
    - **Resize Loop**: More resize events than value changes indicates infinite `ResizeObserver` loop
    - **Large Paste**: `lengthDelta` >100 chars in a single `onChange` event suggests paste handling issues
 
@@ -135,12 +135,24 @@ When extending telemetry or similar diagnostic code:
 - Target cognitive complexity <15 (Biome's default threshold)
 - Each function should do ONE thing: detect issues OR build timeline OR format report
 
+### Known Benign Patterns
+These patterns look alarming in telemetry but are **expected behavior** — do NOT treat them as bugs:
+
+1. **`valuesMatch: false` during `onChange` events**: In controlled React components, the browser updates the textarea DOM *before* React state catches up. A transient mismatch during `onChange` is normal. The telemetry skips mismatch detection for `onChange` events for this reason. If you see mismatches **only** on `onChange` events that self-resolve within 1–4ms on the next `syncStyles` event, this is **not a bug**.
+
+2. **Rapid `syncStyles`/`syncScroll` after `onChange`**: The normal cascade is `onChange → handleChangeWithResize → auto-resize → ResizeObserver → syncStyles → syncScroll`. Events 2–4ms apart in this sequence are expected.
+
+3. **`valuesMatch: false` on first `syncStyles` after a large paste into an empty textarea**: During the first paste, `syncStyles` may fire (via `ResizeObserver`) before React processes the state update. This self-resolves within 1–2ms as React catches up.
+
+**How to tell benign from real bugs**: Real state desynchronization persists across multiple events and does NOT self-resolve. If `valuesMatch: false` appears on `syncStyles`, `snapshot`, or `syncScroll` events and does **not** resolve to `true` within 5ms, investigate further.
+
 ### Common Pitfalls
 1. **Forgetting to deduplicate large values**: Without deduplication, a single 40KB paste creates a 40MB JSON report after 1000 events
 2. **Over-logging**: Logging every keystroke with full context creates noise. Focus on state changes and anomalies.
-3. **Ignoring rapid events**: Events <5ms apart are often the smoking gun for race conditions
+3. **Ignoring rapid events**: Events <2ms apart are often the smoking gun for race conditions
 4. **Not checking valueRegistry**: When you see `<REF:value_N>`, always look it up—the actual value matters
 5. **Dismissing "info" severity issues**: Even info-level issues can indicate patterns that become critical under load
+6. **Chasing transient mismatches**: Check if a `valuesMatch: false` resolves itself on the very next event before investigating — most do (see "Known Benign Patterns")
 
 ## Testing Paste Handling
 When testing paste functionality:
