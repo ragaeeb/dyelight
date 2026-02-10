@@ -1,3 +1,4 @@
+import { version } from '@/../package.json';
 import type { AIDebugReport, AITelemetryEvent } from './types';
 
 /**
@@ -378,7 +379,7 @@ export class AIOptimizedTelemetry {
 
             metadata: {
                 browser: navigator.userAgent,
-                componentVersion: '1.1.3',
+                componentVersion: version,
                 generatedAt: new Date().toISOString(),
                 platform: navigator.platform,
                 timespan: {

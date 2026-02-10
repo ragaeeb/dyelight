@@ -30,8 +30,9 @@ When given a telemetry export JSON:
 
 **Look For**:
 - Event with large `lengthDelta` (>1000 chars)
-- Followed immediately (<5ms) by event with `valuesMatch: false`
+- Followed immediately (<2ms) by event with `valuesMatch: false`
 - DOM value much larger than React value, then suddenly smaller
+- The mismatch does NOT self-resolve on the next `syncStyles` event
 
 **Fix**: Move `e.preventDefault()` to FIRST line of paste handler
 
@@ -73,10 +74,32 @@ When given a telemetry export JSON:
 **Diagnosis**: onChange and onInput both bound, or handler registered twice
 
 **Look For**:
-- Paired events <5ms apart with identical values
+- Paired events <2ms apart with identical values
 - Every user interaction triggers 2+ onChange events
 
 **Fix**: Remove duplicate event bindings, use only onChange
+
+---
+
+### Pattern 4: Transient Mismatch (Benign — NOT a Bug)
+```json
+{
+  "events": [
+    { "type": "onChange", "stateSnapshot": { "valuesMatch": true } },
+    { "type": "syncStyles", "stateSnapshot": { "valuesMatch": true }, "timeSinceLastEvent": 4 },
+    { "type": "syncScroll", "stateSnapshot": { "valuesMatch": true }, "timeSinceLastEvent": 2 }
+  ]
+}
+```
+**Diagnosis**: This is **normal controlled-component behavior**, not a bug.
+
+In controlled React components, the browser updates the DOM before React state catches up. The telemetry now skips mismatch detection during `onChange` events for this reason. If you see:
+- Mismatches only on `onChange` events that resolve within 1–4ms on the next `syncStyles`
+- No persistent `valuesMatch: false` on subsequent `syncStyles`/`snapshot`/`syncScroll` events
+
+…then there is no bug. The cascade `onChange → syncStyles → syncScroll` with events 2–4ms apart is expected.
+
+**How to tell from a REAL bug**: Real desyncs persist — `valuesMatch: false` appears on `syncStyles`, `snapshot`, or `syncScroll` events and does NOT resolve within 5ms.
 
 ---
 
@@ -123,8 +146,8 @@ When given a telemetry export JSON:
 
 | Anomaly | Severity | Meaning |
 |---------|----------|---------|
-| `State mismatch: DOM="X" vs React="Y"` | Critical | Controlled component desync |
-| `Rapid event: 3ms since last event` | Warning | Possible race condition |
+| `State mismatch: DOM="X" vs React="Y"` | Critical | Controlled component desync (only flagged for non-`onChange` events) |
+| `Rapid event: 1ms since last event` | Warning | Possible race condition (threshold: <2ms) |
 | `Large paste detected: 40000 characters` | Info | May indicate paste bug |
 
 ---
@@ -209,8 +232,8 @@ console.log(`Found ${mismatches.length} mismatches at:`,
 
 ### Find Rapid Events
 ```javascript
-const rapid = events.filter(e => e.timeSinceLastEvent !== null && e.timeSinceLastEvent < 5);
-console.log(`${rapid.length} events fired <5ms apart`);
+const rapid = events.filter(e => e.timeSinceLastEvent !== null && e.timeSinceLastEvent < 2);
+console.log(`${rapid.length} events fired <2ms apart`);
 ```
 
 ### Analyze Paste Events
@@ -234,9 +257,10 @@ pastes.forEach(p => {
 
 | If You See... | It Usually Means... |
 |---------------|---------------------|
-| `valuesMatch: false` right after paste | Paste handler prevents default too late |
+| `valuesMatch: false` on `syncStyles`/`snapshot` right after paste | Paste handler prevents default too late |
+| `valuesMatch: false` only on `onChange`, resolves on next `syncStyles` | Normal controlled-component behavior (benign) |
 | 100+ resize events in <1 second | Infinite ResizeObserver loop |
-| Events paired <5ms apart | Double-bound handlers or race condition |
+| Events paired <2ms apart | Double-bound handlers or race condition |
 | DOM value suddenly becomes 0 chars | Unexpected state reset or clear |
 | `lengthDelta: 40000` then `lengthDelta: -39988` | Raw paste → normalized value sequence |
 
@@ -281,10 +305,10 @@ If the telemetry isn't clear:
 
 1. **Enable debug BEFORE reproducing** - Can't capture events retroactively
 2. **Export immediately after bug** - Events are limited to maxEvents (default: 1000)
-3. **Look at `timeSinceLastEvent`** - Tight clusters (<5ms) indicate problems
+3. **Look at `timeSinceLastEvent`** - Tight clusters (<2ms) indicate problems
 4. **Check the last few events** - Often show the current broken state
 5. **Compare before/after values** - What actually changed?
-6. **Trust the auto-detection** - It catches 90% of issues
+6. **Trust auto-detection, but verify transient issues** - Check if flagged mismatches self-resolve within a few ms before investigating deeply. The telemetry skips known benign patterns (like `onChange` mismatches), but edge cases can still trigger false positives during large pastes into empty textareas.
 
 ---
 
