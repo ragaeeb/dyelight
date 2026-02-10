@@ -141,7 +141,7 @@ export const useTextareaValue = (
                     valueLength: newValue.length,
                 },
                 actualTextareaRef,
-                currentValue,
+                newValue,
                 getHeight?.(),
                 isControlled,
             );
