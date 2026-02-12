@@ -116,6 +116,35 @@ describe('syncHighlightStyles', () => {
         // In our test, valid 'styleSnapshot' should likely contain all synced props to be realistic,
         // but for this specific expectation, checking the override is enough.
     });
+
+    it('should keep bidi and shaping-related text layout properties in sync', () => {
+        const highlight = { style: {} as Record<string, string> } as unknown as HTMLDivElement;
+        const textarea = {
+            clientWidth: 200,
+            offsetWidth: 200,
+        } as unknown as HTMLTextAreaElement;
+
+        const styleSnapshot: Record<string, string> = {
+            borderLeftWidth: '0px',
+            borderRightWidth: '0px',
+            direction: 'ltr',
+            fontFeatureSettings: '"liga" 1',
+            fontKerning: 'normal',
+            fontVariantLigatures: 'normal',
+            textAlign: 'start',
+            unicodeBidi: 'plaintext',
+            writingMode: 'horizontal-tb',
+        };
+
+        syncHighlightStyles(textarea, highlight, () => styleSnapshot as unknown as CSSStyleDeclaration);
+
+        expect(highlight.style.unicodeBidi).toBe('plaintext');
+        expect(highlight.style.textAlign).toBe('start');
+        expect(highlight.style.writingMode).toBe('horizontal-tb');
+        expect(highlight.style.fontKerning).toBe('normal');
+        expect(highlight.style.fontVariantLigatures).toBe('normal');
+        expect(highlight.style.fontFeatureSettings).toBe('"liga" 1');
+    });
 });
 
 describe('useHighlightSync', () => {
