@@ -177,6 +177,7 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             undefined,
             getHeight,
         );
+        const currentValueRef = useRef(currentValue);
 
         const getCurrentValue = useCallback(() => currentValue, [currentValue]);
 
@@ -191,6 +192,10 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
         useEffect(() => {
             textareaHeightRef.current = textareaHeight;
         }, [textareaHeight]);
+
+        useEffect(() => {
+            currentValueRef.current = currentValue;
+        }, [currentValue]);
 
         const { cancelPendingSync, highlightLayerRef, syncLayout } = useHighlightSync(
             telemetry,
@@ -225,8 +230,6 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             },
             [setValue, handleAutoResize, textareaRef],
         );
-
-        useEffect(() => {}, []);
 
         const handleScroll = useCallback(
             (e: React.UIEvent<HTMLTextAreaElement>) => {
@@ -277,8 +280,8 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
                         start: textarea.selectionStart,
                     },
                     textareaRef,
-                    currentValue,
-                    textareaHeight,
+                    currentValueRef.current,
+                    textareaHeightRef.current,
                     isControlled,
                     { highlightLayer: highlightLayerRef.current },
                 );
@@ -295,7 +298,7 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             return () => {
                 document.removeEventListener('selectionchange', onDocumentSelectionChange);
             };
-        }, [telemetry, textareaRef, currentValue, textareaHeight, isControlled, highlightLayerRef]);
+        }, [telemetry, textareaRef, isControlled, highlightLayerRef]);
 
         useEffect(() => {
             if (!debug) {
@@ -336,15 +339,7 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
                 setSelectionRange: (start: number, end: number) => textareaRef.current?.setSelectionRange(start, end),
                 setValue: setValueWithResize,
             }),
-            [
-                currentValue,
-                setValueWithResize,
-                highlightLayerRef,
-                textareaRef,
-                telemetry,
-                textareaHeight,
-                highlights,
-            ],
+            [currentValue, setValueWithResize, highlightLayerRef, textareaRef, telemetry, textareaHeight, highlights],
         );
 
         const layoutStyleKey = useMemo(() => {
