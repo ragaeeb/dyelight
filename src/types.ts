@@ -181,6 +181,51 @@ export type AITelemetryEvent = {
         textareaHeight: number | undefined;
         /** Whether the component is in controlled mode */
         isControlled: boolean;
+        /** Textarea selection/caret state when available */
+        selection?: {
+            start: number | null;
+            end: number | null;
+            direction: 'forward' | 'backward' | 'none' | null;
+        };
+        /** Textarea geometry measurements at this event */
+        textareaMetrics?: {
+            clientWidth: number;
+            clientHeight: number;
+            offsetWidth: number;
+            offsetHeight: number;
+            scrollWidth: number;
+            scrollHeight: number;
+            scrollTop: number;
+            scrollLeft: number;
+            contentWidth: number | null;
+            contentHeight: number | null;
+        };
+        /** Overlay geometry measurements when available */
+        overlayMetrics?: {
+            clientWidth: number;
+            clientHeight: number;
+            offsetWidth: number;
+            offsetHeight: number;
+            scrollWidth: number;
+            scrollHeight: number;
+            scrollTop: number;
+            scrollLeft: number;
+            contentWidth: number | null;
+            contentHeight: number | null;
+        };
+        /** Derived deltas to quickly detect visual divergence */
+        layoutDeltas?: {
+            contentWidthDelta: number | null;
+            contentHeightDelta: number | null;
+            scrollTopDelta: number | null;
+            scrollLeftDelta: number | null;
+        };
+        /** Signals for identifying style ownership conflicts */
+        styleOwnership?: {
+            renderSetsOverlayPadding?: boolean;
+            syncStylesSetsPadding?: boolean;
+            syncStylesAdjustedPaddingSide?: 'left' | 'right' | null;
+        };
     };
     /** Detected anomalies or issues at this event */
     anomalies: string[];

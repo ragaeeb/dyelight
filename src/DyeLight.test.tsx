@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { createLineElement, DyeLight, renderHighlightedLine } from './DyeLight';
+import { createLineElement, DyeLight, getHighlightLayerStyle, renderHighlightedLine } from './DyeLight';
 
 describe('createLineElement', () => {
     it('returns element with class when highlight is class name', () => {
@@ -65,5 +65,24 @@ describe('renderHighlightedLine', () => {
 describe('DyeLight metadata', () => {
     it('exposes displayName', () => {
         expect(DyeLight.displayName).toBe('DyeLight');
+    });
+});
+
+describe('getHighlightLayerStyle', () => {
+    it('does not set render-time padding so syncStyles can own scrollbar compensation', () => {
+        const style = getHighlightLayerStyle('ltr', 120);
+
+        expect(style.direction).toBe('ltr');
+        expect(style.height).toBe('120px');
+        expect(style.padding).toBeUndefined();
+    });
+
+    it('does not clobber scrollbar-compensated side padding on rerender', () => {
+        const compensatedInlineStyle = { paddingLeft: '12px', paddingRight: '31px' };
+        const rerenderStyle = getHighlightLayerStyle('ltr', 120) as Record<string, string>;
+        const merged = { ...compensatedInlineStyle, ...rerenderStyle };
+
+        expect(merged.paddingRight).toBe('31px');
+        expect(merged.paddingLeft).toBe('12px');
     });
 });

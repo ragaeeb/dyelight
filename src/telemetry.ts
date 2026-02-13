@@ -1,6 +1,97 @@
 import { version } from '@/../package.json';
 import type { AIDebugReport, AITelemetryEvent } from './types';
 
+type TelemetryRecordContext = {
+    highlightLayer?: HTMLDivElement | null;
+    styleOwnership?: {
+        renderSetsOverlayPadding?: boolean;
+        syncStylesSetsPadding?: boolean;
+        syncStylesAdjustedPaddingSide?: 'left' | 'right' | null;
+    };
+};
+
+type ElementMetrics = {
+    clientWidth: number;
+    clientHeight: number;
+    offsetWidth: number;
+    offsetHeight: number;
+    scrollWidth: number;
+    scrollHeight: number;
+    scrollTop: number;
+    scrollLeft: number;
+    contentWidth: number | null;
+    contentHeight: number | null;
+};
+
+function parsePixelValue(value: string | undefined): number {
+    return Number.parseFloat(value ?? '') || 0;
+}
+
+function createElementMetrics(
+    element: Pick<
+        HTMLElement,
+        'clientWidth' | 'clientHeight' | 'offsetWidth' | 'offsetHeight' | 'scrollWidth' | 'scrollHeight' | 'scrollTop' | 'scrollLeft'
+    > | null,
+    computedStyle?: Pick<
+        CSSStyleDeclaration,
+        'paddingLeft' | 'paddingRight' | 'paddingTop' | 'paddingBottom' | 'borderLeftWidth' | 'borderRightWidth' | 'borderTopWidth' | 'borderBottomWidth'
+    >,
+): ElementMetrics | undefined {
+    if (!element) {
+        return undefined;
+    }
+
+    const paddingLeft = parsePixelValue(computedStyle?.paddingLeft);
+    const paddingRight = parsePixelValue(computedStyle?.paddingRight);
+    const paddingTop = parsePixelValue(computedStyle?.paddingTop);
+    const paddingBottom = parsePixelValue(computedStyle?.paddingBottom);
+
+    const contentWidth = Number.isFinite(element.clientWidth - paddingLeft - paddingRight)
+        ? element.clientWidth - paddingLeft - paddingRight
+        : null;
+    const contentHeight = Number.isFinite(element.clientHeight - paddingTop - paddingBottom)
+        ? element.clientHeight - paddingTop - paddingBottom
+        : null;
+
+    return {
+        clientHeight: element.clientHeight,
+        clientWidth: element.clientWidth,
+        contentHeight,
+        contentWidth,
+        offsetHeight: element.offsetHeight,
+        offsetWidth: element.offsetWidth,
+        scrollHeight: element.scrollHeight,
+        scrollLeft: element.scrollLeft,
+        scrollTop: element.scrollTop,
+        scrollWidth: element.scrollWidth,
+    };
+}
+
+function createLayoutDeltas(
+    textareaMetrics?: ElementMetrics,
+    overlayMetrics?: ElementMetrics,
+): AITelemetryEvent['stateSnapshot']['layoutDeltas'] {
+    if (!textareaMetrics || !overlayMetrics) {
+        return undefined;
+    }
+
+    const contentWidthDelta =
+        textareaMetrics.contentWidth !== null && overlayMetrics.contentWidth !== null
+            ? textareaMetrics.contentWidth - overlayMetrics.contentWidth
+            : null;
+    const contentHeightDelta =
+        textareaMetrics.contentHeight !== null && overlayMetrics.contentHeight !== null
+            ? textareaMetrics.contentHeight - overlayMetrics.contentHeight
+            : null;
+
+    return {
+        contentHeightDelta,
+        contentWidthDelta,
+        scrollLeftDelta: textareaMetrics.scrollLeft - overlayMetrics.scrollLeft,
+        scrollTopDelta: textareaMetrics.scrollTop - overlayMetrics.scrollTop,
+    };
+}
+
 /**
  * Detects issues from the issue registry and creates structured issue records
  */
@@ -61,6 +152,21 @@ function detectSuspiciousPatterns(events: AITelemetryEvent[]): string[] {
         suspiciousPatterns.push(
             `High frequency of sync operations (${syncEvents.length}/${events.length} events). ` +
                 `May indicate layout thrashing.`,
+        );
+    }
+
+    const geometryMismatches = events.filter((event) => {
+        const widthDelta = event.stateSnapshot.layoutDeltas?.contentWidthDelta;
+        const heightDelta = event.stateSnapshot.layoutDeltas?.contentHeightDelta;
+        return (
+            (typeof widthDelta === 'number' && Math.abs(widthDelta) > 0.5) ||
+            (typeof heightDelta === 'number' && Math.abs(heightDelta) > 0.5)
+        );
+    });
+    if (geometryMismatches.length > 0) {
+        suspiciousPatterns.push(
+            `Detected ${geometryMismatches.length} event(s) with textarea/overlay geometry deltas. ` +
+                `Possible visual layout desynchronization.`,
         );
     }
 
@@ -222,6 +328,83 @@ export class AIOptimizedTelemetry {
         this.enabled = enabled;
     }
 
+    private buildSnapshots(
+        textareaRef: React.RefObject<HTMLTextAreaElement | null>,
+        currentValue: string | undefined,
+        textareaHeight: number | undefined,
+        isControlled: boolean,
+        captureGeometry: boolean,
+        context?: TelemetryRecordContext,
+    ) {
+        const textareaValue = textareaRef.current?.value ?? '';
+        const reactValue = currentValue ?? '';
+        const valuesMatch = textareaValue === reactValue;
+        const textarea = textareaRef.current;
+        const highlightLayer = captureGeometry ? (context?.highlightLayer ?? null) : null;
+        const textareaStyle = captureGeometry && textarea ? getComputedStyle(textarea) : undefined;
+        const overlayStyle = captureGeometry && highlightLayer ? getComputedStyle(highlightLayer) : undefined;
+        const textareaMetrics = captureGeometry ? createElementMetrics(textarea, textareaStyle) : undefined;
+        const overlayMetrics = captureGeometry ? createElementMetrics(highlightLayer, overlayStyle) : undefined;
+        const layoutDeltas = captureGeometry ? createLayoutDeltas(textareaMetrics, overlayMetrics) : undefined;
+        const selection =
+            textarea && typeof textarea.selectionStart === 'number'
+                ? {
+                      direction: textarea.selectionDirection,
+                      end: textarea.selectionEnd,
+                      start: textarea.selectionStart,
+                  }
+                : undefined;
+
+        return {
+            deduplicatedReactValue: this.valueRegistry.store(reactValue),
+            deduplicatedTextareaValue: this.valueRegistry.store(textareaValue),
+            stateSnapshot: {
+                isControlled,
+                layoutDeltas,
+                overlayMetrics,
+                selection,
+                styleOwnership: context?.styleOwnership,
+                textareaHeight,
+                textareaMetrics,
+                valuesMatch,
+            },
+            textareaValue,
+            valuesMatch,
+        };
+    }
+
+    private collectAnomalies(
+        category: 'state' | 'dom' | 'sync' | 'user' | 'system',
+        type: string,
+        textareaValue: string,
+        reactValue: string,
+        valuesMatch: boolean,
+        timeSinceLastEvent: number | null,
+    ) {
+        const anomalies: string[] = [];
+
+        const isOnChangeEvent = category === 'user' && type === 'onChange';
+        if (!valuesMatch && !isOnChangeEvent) {
+            anomalies.push(`State mismatch: DOM="${textareaValue.slice(0, 50)}..." vs React="${reactValue.slice(0, 50)}..."`);
+            this.issueRegistry.set('state_mismatch', (this.issueRegistry.get('state_mismatch') ?? 0) + 1);
+        }
+
+        if (timeSinceLastEvent !== null && timeSinceLastEvent < 2) {
+            anomalies.push(`Rapid event: ${timeSinceLastEvent}ms since last event`);
+            this.issueRegistry.set('rapid_events', (this.issueRegistry.get('rapid_events') ?? 0) + 1);
+        }
+
+        if (category === 'user' && type === 'onChange') {
+            const lengthDelta = Math.abs(textareaValue.length - reactValue.length);
+            if (lengthDelta > 100) {
+                anomalies.push(`Large paste detected: ${lengthDelta} characters changed`);
+                this.issueRegistry.set('large_paste', (this.issueRegistry.get('large_paste') ?? 0) + 1);
+            }
+        }
+
+        return anomalies;
+    }
+
     /**
      * Records an event with full context for AI analysis
      * @param type Event type identifier
@@ -240,6 +423,7 @@ export class AIOptimizedTelemetry {
         currentValue: string | undefined,
         textareaHeight: number | undefined,
         isControlled: boolean,
+        context?: TelemetryRecordContext,
     ) {
         if (!this.enabled) {
             return;
@@ -247,39 +431,11 @@ export class AIOptimizedTelemetry {
 
         const now = Date.now();
         const timeSinceLastEvent = this.lastEventTimestamp ? now - this.lastEventTimestamp : null;
-
-        const textareaValue = textareaRef.current?.value ?? '';
         const reactValue = currentValue ?? '';
-        const valuesMatch = textareaValue === reactValue;
-
-        const anomalies: string[] = [];
-
-        // Skip mismatch detection during onChange: the browser updates the DOM before
-        // React state, so a transient mismatch is expected for controlled components.
-        const isOnChangeEvent = category === 'user' && type === 'onChange';
-        if (!valuesMatch && !isOnChangeEvent) {
-            anomalies.push(
-                `State mismatch: DOM="${textareaValue.slice(0, 50)}..." vs React="${reactValue.slice(0, 50)}..."`,
-            );
-            this.issueRegistry.set('state_mismatch', (this.issueRegistry.get('state_mismatch') ?? 0) + 1);
-        }
-
-        if (timeSinceLastEvent !== null && timeSinceLastEvent < 2) {
-            anomalies.push(`Rapid event: ${timeSinceLastEvent}ms since last event`);
-            this.issueRegistry.set('rapid_events', (this.issueRegistry.get('rapid_events') ?? 0) + 1);
-        }
-
-        if (category === 'user' && type === 'onChange') {
-            const lengthDelta = Math.abs(textareaValue.length - reactValue.length);
-            if (lengthDelta > 100) {
-                anomalies.push(`Large paste detected: ${lengthDelta} characters changed`);
-                this.issueRegistry.set('large_paste', (this.issueRegistry.get('large_paste') ?? 0) + 1);
-            }
-        }
-
-        // Deduplicate large values using the registry
-        const deduplicatedTextareaValue = this.valueRegistry.store(textareaValue);
-        const deduplicatedReactValue = this.valueRegistry.store(reactValue);
+        const captureGeometry = category === 'sync' || type === 'snapshot' || type === 'selectionChange';
+        const { deduplicatedReactValue, deduplicatedTextareaValue, stateSnapshot, textareaValue, valuesMatch } =
+            this.buildSnapshots(textareaRef, currentValue, textareaHeight, isControlled, captureGeometry, context);
+        const anomalies = this.collectAnomalies(category, type, textareaValue, reactValue, valuesMatch, timeSinceLastEvent);
 
         const event: AITelemetryEvent = {
             anomalies,
@@ -287,11 +443,9 @@ export class AIOptimizedTelemetry {
             data,
             description: this.generateDescription(type, category, data),
             stateSnapshot: {
-                isControlled,
                 reactValue: deduplicatedReactValue,
-                textareaHeight,
+                ...stateSnapshot,
                 textareaValue: deduplicatedTextareaValue,
-                valuesMatch,
             },
             timeSinceLastEvent,
             timestamp: now,
@@ -436,6 +590,13 @@ export class AIOptimizedTelemetry {
                     },
                     keyFields: {
                         'events[].anomalies': 'Issues detected at each event',
+                        'events[].stateSnapshot.layoutDeltas':
+                            'Textarea/overlay width/height/scroll deltas for visual desync detection',
+                        'events[].stateSnapshot.overlayMetrics': 'Overlay geometry and effective content dimensions',
+                        'events[].stateSnapshot.selection': 'Caret and selection bounds at each event',
+                        'events[].stateSnapshot.styleOwnership':
+                            'Whether render/sync paths wrote overlay padding and which side was adjusted',
+                        'events[].stateSnapshot.textareaMetrics': 'Textarea geometry and effective content dimensions',
                         'events[].stateSnapshot': 'Full state at each event for comparison',
                         finalState: 'Current state at time of export',
                         'summary.detectedIssues': 'Automatically detected problems, sorted by severity',

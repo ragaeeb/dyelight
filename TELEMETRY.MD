@@ -9,6 +9,26 @@ When given a telemetry export JSON:
 3. **Follow `timeline.stateChanges`** - Chronological state mutations
 4. **Find `valuesMatch: false`** - DOM/React desync points
 
+## New Layout Forensics Fields
+
+Telemetry now records geometry and selection state on each event (when available):
+
+- `events[].stateSnapshot.textareaMetrics`
+  - `clientWidth/clientHeight`, `offsetWidth/offsetHeight`, `scrollWidth/scrollHeight`, `scrollTop/scrollLeft`
+  - `contentWidth/contentHeight` (client minus paddings)
+- `events[].stateSnapshot.overlayMetrics`
+  - Same metrics for the highlight overlay
+- `events[].stateSnapshot.layoutDeltas`
+  - `contentWidthDelta`, `contentHeightDelta`, `scrollTopDelta`, `scrollLeftDelta`
+- `events[].stateSnapshot.selection`
+  - `start`, `end`, `direction`
+- `events[].stateSnapshot.styleOwnership`
+  - `renderSetsOverlayPadding`
+  - `syncStylesSetsPadding`
+  - `syncStylesAdjustedPaddingSide`
+
+These fields are the primary way to confirm visual/layout desync vs value desync.
+
 ## Common Bug Patterns
 
 ### Pattern 1: Paste Race Condition
@@ -103,6 +123,33 @@ In controlled React components, the browser updates the DOM before React state c
 
 ---
 
+### Pattern 5: Overlay/Textarea Geometry Divergence
+```json
+{
+  "stateSnapshot": {
+    "valuesMatch": true,
+    "layoutDeltas": {
+      "contentWidthDelta": 19,
+      "scrollTopDelta": 0
+    },
+    "styleOwnership": {
+      "renderSetsOverlayPadding": false,
+      "syncStylesSetsPadding": true
+    }
+  }
+}
+```
+**Diagnosis**: Visual alignment bug (wrap/geometry mismatch), not value desync.
+
+**Look For**:
+- `valuesMatch: true` but non-zero `contentWidthDelta` or `contentHeightDelta`
+- non-zero `scrollTopDelta`/`scrollLeftDelta` that persists
+- suspicious `styleOwnership` combinations (e.g., render path writing overlay padding)
+
+**Fix**: Ensure a single owner for overlay padding/sizing and sync layout in one pipeline.
+
+---
+
 ## Reading Value References
 
 ### When You See This:
@@ -139,6 +186,9 @@ In controlled React components, the browser updates the DOM before React state c
 | `state` | Programmatic state change | setValue, valueMismatch |
 | `sync` | Layout synchronization | syncScroll, syncStyles |
 | `system` | Background/periodic | snapshot |
+
+Additional user event:
+- `selectionChange`: selection/caret updates from `onSelect` and document-level `selectionchange`
 
 ---
 
@@ -236,6 +286,29 @@ const rapid = events.filter(e => e.timeSinceLastEvent !== null && e.timeSinceLas
 console.log(`${rapid.length} events fired <2ms apart`);
 ```
 
+### Find Geometry Divergence
+```javascript
+const geometry = events.filter(e => {
+    const d = e.stateSnapshot.layoutDeltas;
+    if (!d) return false;
+    return (Math.abs(d.contentWidthDelta ?? 0) > 0.5) ||
+           (Math.abs(d.contentHeightDelta ?? 0) > 0.5) ||
+           (Math.abs(d.scrollTopDelta ?? 0) > 0.5) ||
+           (Math.abs(d.scrollLeftDelta ?? 0) > 0.5);
+});
+console.log(`Found ${geometry.length} geometry-divergent events`);
+```
+
+### Find Selection Drift Around Edits
+```javascript
+const sel = events.filter(e => e.type === 'selectionChange' || e.type === 'onChange');
+sel.forEach(e => {
+    const s = e.stateSnapshot.selection;
+    const d = e.stateSnapshot.layoutDeltas;
+    console.log(e.timestampISO, e.type, s, d);
+});
+```
+
 ### Analyze Paste Events
 ```javascript
 const pastes = events.filter(e => 
@@ -259,6 +332,8 @@ pastes.forEach(p => {
 |---------------|---------------------|
 | `valuesMatch: false` on `syncStyles`/`snapshot` right after paste | Paste handler prevents default too late |
 | `valuesMatch: false` only on `onChange`, resolves on next `syncStyles` | Normal controlled-component behavior (benign) |
+| `valuesMatch: true` but `contentWidthDelta != 0` | Visual/layout desync between overlay and textarea |
+| `scrollTopDelta` persists after sync | Scroll synchronization mismatch |
 | 100+ resize events in <1 second | Infinite ResizeObserver loop |
 | Events paired <2ms apart | Double-bound handlers or race condition |
 | DOM value suddenly becomes 0 chars | Unexpected state reset or clear |
@@ -275,6 +350,8 @@ pastes.forEach(p => {
 5. ✅ Dereferenced any `<REF:value_N>` values to see actual content
 6. ✅ Checked related events before/after the problematic one
 7. ✅ Reviewed recommendations in `summary.recommendations`
+8. ✅ Checked `layoutDeltas` and `selection` around the first bad frame
+9. ✅ Checked `styleOwnership` on nearby `syncStyles` events
 
 ---
 
