@@ -1,5 +1,5 @@
 import type React from 'react';
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef } from 'react';
 import { useAutoResize } from './hooks/useAutoResize';
 import { useHighlightedContent } from './hooks/useHighlightedContent';
 import { useHighlightSync } from './hooks/useHighlightSync';
@@ -118,6 +118,19 @@ export const renderHighlightedLine = (
 };
 
 /**
+ * Builds the base style object for the highlight overlay.
+ * Padding is intentionally omitted here so syncStyles can preserve scrollbar compensation.
+ */
+export const getHighlightLayerStyle = (
+    dir: React.CSSProperties['direction'],
+    textareaHeight?: number,
+): React.CSSProperties => ({
+    ...DEFAULT_HIGHLIGHT_LAYER_STYLE,
+    direction: dir,
+    height: textareaHeight ? `${textareaHeight}px` : undefined,
+});
+
+/**
  * A textarea component with support for highlighting character ranges using absolute positions
  * and optional line-level highlighting. Perfect for syntax highlighting, error indication,
  * and text annotation without the complexity of line-based positioning.
@@ -133,6 +146,8 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             highlights = [],
             lineHighlights = {},
             onChange,
+            onScroll: onScrollProp,
+            onSelect: onSelectProp,
             rows = 4,
             style,
             value,
@@ -162,6 +177,7 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             undefined,
             getHeight,
         );
+        const currentValueRef = useRef(currentValue);
 
         const getCurrentValue = useCallback(() => currentValue, [currentValue]);
 
@@ -177,7 +193,11 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             textareaHeightRef.current = textareaHeight;
         }, [textareaHeight]);
 
-        const { highlightLayerRef, syncScroll, syncStyles } = useHighlightSync(
+        useEffect(() => {
+            currentValueRef.current = currentValue;
+        }, [currentValue]);
+
+        const { cancelPendingSync, highlightLayerRef, syncLayout } = useHighlightSync(
             telemetry,
             textareaRef,
             getCurrentValue,
@@ -196,8 +216,9 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             (e: React.ChangeEvent<HTMLTextAreaElement>) => {
                 handleChange(e);
                 handleAutoResize(e.target);
+                syncLayout(textareaRef);
             },
-            [handleChange, handleAutoResize],
+            [handleChange, handleAutoResize, syncLayout, textareaRef],
         );
 
         const setValueWithResize = useCallback(
@@ -210,11 +231,74 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             [setValue, handleAutoResize, textareaRef],
         );
 
-        useEffect(() => {}, []);
+        const handleScroll = useCallback(
+            (e: React.UIEvent<HTMLTextAreaElement>) => {
+                onScrollProp?.(e);
+                syncLayout(textareaRef);
+            },
+            [onScrollProp, syncLayout, textareaRef],
+        );
 
-        const handleScroll = useCallback(() => {
-            syncScroll(textareaRef);
-        }, [syncScroll, textareaRef]);
+        const handleSelect = useCallback(
+            (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+                const target = e.currentTarget;
+                telemetry.record(
+                    'selectionChange',
+                    'user',
+                    {
+                        direction: target.selectionDirection,
+                        end: target.selectionEnd,
+                        source: 'onSelect',
+                        start: target.selectionStart,
+                    },
+                    textareaRef,
+                    currentValue,
+                    textareaHeight,
+                    isControlled,
+                    { highlightLayer: highlightLayerRef.current },
+                );
+
+                onSelectProp?.(e);
+            },
+            [onSelectProp, telemetry, textareaRef, currentValue, textareaHeight, isControlled, highlightLayerRef],
+        );
+
+        useEffect(() => {
+            const textarea = textareaRef.current;
+            if (!textarea) {
+                return;
+            }
+
+            const recordSelectionChange = () => {
+                telemetry.record(
+                    'selectionChange',
+                    'user',
+                    {
+                        direction: textarea.selectionDirection,
+                        end: textarea.selectionEnd,
+                        source: 'document.selectionchange',
+                        start: textarea.selectionStart,
+                    },
+                    textareaRef,
+                    currentValueRef.current,
+                    textareaHeightRef.current,
+                    isControlled,
+                    { highlightLayer: highlightLayerRef.current },
+                );
+            };
+
+            const onDocumentSelectionChange = () => {
+                if (document.activeElement !== textarea) {
+                    return;
+                }
+                recordSelectionChange();
+            };
+
+            document.addEventListener('selectionchange', onDocumentSelectionChange);
+            return () => {
+                document.removeEventListener('selectionchange', onDocumentSelectionChange);
+            };
+        }, [telemetry, textareaRef, isControlled, highlightLayerRef]);
 
         useEffect(() => {
             if (!debug) {
@@ -255,23 +339,32 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
                 setSelectionRange: (start: number, end: number) => textareaRef.current?.setSelectionRange(start, end),
                 setValue: setValueWithResize,
             }),
-            [
-                currentValue,
-                setValueWithResize,
-                highlightLayerRef,
-                textareaRef,
-                telemetry,
-                textareaHeight,
-                highlights,
-            ],
+            [currentValue, setValueWithResize, highlightLayerRef, textareaRef, telemetry, textareaHeight, highlights],
         );
 
-        useEffect(() => {
+        const layoutStyleKey = useMemo(() => {
+            if (!style) {
+                return '';
+            }
+
+            return Object.entries(style as Record<string, unknown>)
+                .toSorted(([a], [b]) => a.localeCompare(b))
+                .map(([key, value]) => `${key}:${String(value)}`)
+                .join(';');
+        }, [style]);
+
+        const layoutSyncKey = useMemo(
+            () => `${dir}|${className}|${rows.toString()}|${layoutStyleKey}`,
+            [dir, className, rows, layoutStyleKey],
+        );
+
+        useLayoutEffect(() => {
+            void layoutSyncKey;
             if (textareaRef.current && enableAutoResize) {
                 handleAutoResize(textareaRef.current);
             }
-            syncStyles(textareaRef);
-        }, [currentValue, handleAutoResize, enableAutoResize, syncStyles, textareaRef]);
+            syncLayout(textareaRef);
+        }, [layoutSyncKey, handleAutoResize, enableAutoResize, syncLayout, textareaRef]);
 
         useEffect(() => {
             if (!textareaRef.current) {
@@ -279,24 +372,25 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             }
 
             const textarea = textareaRef.current;
-            let rafId: number;
 
             const observer = new ResizeObserver(() => {
-                cancelAnimationFrame(rafId);
-                rafId = requestAnimationFrame(() => {
-                    syncStyles(textareaRef);
-                    if (enableAutoResize) {
-                        handleAutoResize(textarea);
-                    }
-                });
+                if (enableAutoResize) {
+                    handleAutoResize(textarea);
+                }
+                syncLayout(textareaRef);
             });
 
             observer.observe(textarea);
             return () => {
                 observer.disconnect();
-                cancelAnimationFrame(rafId);
             };
-        }, [textareaRef, syncStyles, handleAutoResize, enableAutoResize]);
+        }, [textareaRef, syncLayout, handleAutoResize, enableAutoResize]);
+
+        useEffect(() => {
+            return () => {
+                cancelPendingSync();
+            };
+        }, [cancelPendingSync]);
 
         const baseTextareaStyle: React.CSSProperties = {
             ...DEFAULT_BASE_STYLE,
@@ -305,12 +399,7 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             resize: enableAutoResize ? 'none' : 'vertical',
         };
 
-        const highlightLayerStyle: React.CSSProperties = {
-            ...DEFAULT_HIGHLIGHT_LAYER_STYLE,
-            direction: dir,
-            height: textareaHeight ? `${textareaHeight}px` : undefined,
-            padding: textareaRef.current ? getComputedStyle(textareaRef.current).padding : '8px 12px',
-        };
+        const highlightLayerStyle = getHighlightLayerStyle(dir, textareaHeight);
 
         return (
             <div className={containerClassName} ref={containerRef} style={{ ...DEFAULT_CONTAINER_STYLE, ...style }}>
@@ -323,6 +412,7 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
                     dir={dir}
                     onChange={handleChangeWithResize}
                     onScroll={handleScroll}
+                    onSelect={handleSelect}
                     ref={textareaRef}
                     rows={rows}
                     style={baseTextareaStyle}

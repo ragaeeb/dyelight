@@ -105,6 +105,7 @@ export const useHighlightSync = (
     isControlled?: boolean,
 ) => {
     const highlightLayerRef = useRef<HTMLDivElement>(null);
+    const syncFrameId = useRef<number | undefined>(undefined);
 
     /**
      * Synchronizes scroll position between textarea and highlight layer
@@ -136,6 +137,7 @@ export const useHighlightSync = (
                 getCurrentValue?.() ?? '',
                 getHeight?.(),
                 isControlled ?? false,
+                { highlightLayer: highlightLayerRef.current },
             );
         },
         [telemetry, textareaRef, getCurrentValue, getHeight, isControlled],
@@ -157,6 +159,7 @@ export const useHighlightSync = (
                 textareaRefParam.current.clientWidth -
                 (parseFloat(computedStyle.borderLeftWidth) || 0) -
                 (parseFloat(computedStyle.borderRightWidth) || 0);
+            const adjustedPaddingSide = scrollbarWidth > 0 ? (computedStyle.direction === 'rtl' ? 'left' : 'right') : null;
 
             syncHighlightStyles(textareaRefParam.current, highlightLayerRef.current);
 
@@ -167,16 +170,53 @@ export const useHighlightSync = (
                     direction: computedStyle.direction,
                     fontSize: computedStyle.fontSize,
                     padding: computedStyle.padding,
+                    renderSetsOverlayPadding: false,
                     scrollbarWidth,
+                    syncStylesAdjustedPaddingSide: adjustedPaddingSide,
                 },
                 textareaRef ?? textareaRefParam,
                 getCurrentValue?.() ?? '',
                 getHeight?.(),
                 isControlled ?? false,
+                {
+                    highlightLayer: highlightLayerRef.current,
+                    styleOwnership: {
+                        renderSetsOverlayPadding: false,
+                        syncStylesAdjustedPaddingSide: adjustedPaddingSide,
+                        syncStylesSetsPadding: true,
+                    },
+                },
             );
         },
         [telemetry, textareaRef, getCurrentValue, getHeight, isControlled],
     );
 
-    return { highlightLayerRef, syncScroll, syncStyles };
+    /**
+     * Schedules a single-frame layout sync so style and scroll updates are applied together.
+     */
+    const syncLayout = useCallback(
+        (textareaRefParam: React.RefObject<HTMLTextAreaElement | null>) => {
+            if (syncFrameId.current !== undefined) {
+                cancelAnimationFrame(syncFrameId.current);
+            }
+
+            syncFrameId.current = requestAnimationFrame(() => {
+                syncStyles(textareaRefParam);
+                syncScroll(textareaRefParam);
+                syncFrameId.current = undefined;
+            });
+        },
+        [syncStyles, syncScroll],
+    );
+
+    const cancelPendingSync = useCallback(() => {
+        if (syncFrameId.current === undefined) {
+            return;
+        }
+
+        cancelAnimationFrame(syncFrameId.current);
+        syncFrameId.current = undefined;
+    }, []);
+
+    return { cancelPendingSync, highlightLayerRef, syncLayout, syncScroll, syncStyles };
 };

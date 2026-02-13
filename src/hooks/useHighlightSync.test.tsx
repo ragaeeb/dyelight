@@ -149,8 +149,10 @@ describe('syncHighlightStyles', () => {
 
 describe('useHighlightSync', () => {
     it('provides ref and callbacks', () => {
-        const { highlightLayerRef, syncScroll, syncStyles } = useHighlightSync();
+        const { cancelPendingSync, highlightLayerRef, syncLayout, syncScroll, syncStyles } = useHighlightSync();
         expect(highlightLayerRef.current).toBeNull();
+        expect(typeof cancelPendingSync).toBe('function');
+        expect(typeof syncLayout).toBe('function');
         expect(typeof syncScroll).toBe('function');
         expect(typeof syncStyles).toBe('function');
     });
