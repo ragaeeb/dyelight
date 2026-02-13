@@ -61,5 +61,5 @@
     },
     "type": "module",
     "types": "./dist/index.d.mts",
-    "version": "1.2.4"
+    "version": "1.2.5"
 }
