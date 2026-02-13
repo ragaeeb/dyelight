@@ -29,6 +29,24 @@ Telemetry now records geometry and selection state on each event (when available
 
 These fields are the primary way to confirm visual/layout desync vs value desync.
 
+## Capture Scope (Token-Lean by Design)
+
+To keep reports small and fast, **full geometry snapshots are not captured on every event**.
+
+- Geometry-heavy fields (`textareaMetrics`, `overlayMetrics`, `layoutDeltas`) are captured only for:
+  - `sync` events (e.g., `syncStyles`, `syncScroll`)
+  - `snapshot` events
+  - `selectionChange` events
+- Lighter events (e.g., many `state`/`user` events) still capture:
+  - value sync state (`textareaValue`, `reactValue`, `valuesMatch`)
+  - selection when available
+  - anomalies and event data
+
+Why this matters:
+- Keeps telemetry exports token-lean for AI analysis
+- Avoids expensive `getComputedStyle`/layout reads on high-frequency events
+- Preserves enough forensic detail at the moments most relevant to layout bugs
+
 ## Common Bug Patterns
 
 ### Pattern 1: Paste Race Condition
@@ -149,6 +167,25 @@ In controlled React components, the browser updates the DOM before React state c
 **Fix**: Ensure a single owner for overlay padding/sizing and sync layout in one pipeline.
 
 ---
+
+## Interpretation Guide (AI Root-Cause Hints)
+
+Use this quick matrix when triaging:
+
+| Signal | Likely Cause | Confidence |
+|---|---|---|
+| `valuesMatch: false` persists on non-`onChange` events | True DOM/React state desync | High |
+| `valuesMatch: true` + non-zero `contentWidthDelta` | Visual wrap/geometry desync | High |
+| `scrollTopDelta` or `scrollLeftDelta` persists after sync events | Scroll sync ordering issue | High |
+| `styleOwnership.renderSetsOverlayPadding: true` near mismatch | Render path clobbering sync compensation | High |
+| Frequent `selectionChange` around edit + geometry deltas spike | Caret/selection mapped to different visual geometry | Medium-high |
+| Rapid event anomalies only, no persistent deltas | Potentially benign timing noise | Medium |
+
+Recommended AI workflow:
+1. Classify bug as **value desync** vs **geometry desync** first.
+2. If geometry: inspect `layoutDeltas` + `styleOwnership` around first visible bad frame.
+3. Correlate with `selectionChange` to confirm caret/selection drift.
+4. Use `timeline.syncOperations` ordering to identify race windows.
 
 ## Reading Value References
 
