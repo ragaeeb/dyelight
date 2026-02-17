@@ -56,7 +56,6 @@ type HarnessApi = {
     getPasteSnapshot: () => ValueSnapshot;
     getProgrammaticSelectionSnapshot: () => SelectionSnapshot;
     getUncontrolledSnapshot: () => OverlaySnapshot;
-    mutateUncontrolledDom: (value: string) => void;
     pasteLargeText: (text: string) => void;
     programmaticSetValueAndSelect: (value: string, start: number, end: number) => void;
     scrollGeometryTo: (top: number) => void;
@@ -106,6 +105,8 @@ const App = () => {
 
     const programmaticRef = useRef<DyeLightRef>(null);
     const overlapRef = useRef<DyeLightRef>(null);
+    const controlledRaceRef = useRef(controlledRaceValue);
+    const pasteRef = useRef(pasteValue);
 
     const bidiHighlights = useMemo<CharacterRange[]>(() => {
         const tokenStart = bidiValue.indexOf(bidiToken);
@@ -141,6 +142,14 @@ const App = () => {
     );
 
     useEffect(() => {
+        controlledRaceRef.current = controlledRaceValue;
+    }, [controlledRaceValue]);
+
+    useEffect(() => {
+        pasteRef.current = pasteValue;
+    }, [pasteValue]);
+
+    useEffect(() => {
         window.__dyelightHarness = {
             getArabicMarkerRect: () => {
                 const marker = document.querySelector('.bidi-container .arabic-marker') as HTMLSpanElement | null;
@@ -172,7 +181,7 @@ const App = () => {
                 const textarea = document.getElementById('controlled-race-textarea') as HTMLTextAreaElement | null;
                 return {
                     domValue: textarea?.value ?? '',
-                    stateValue: controlledRaceValue,
+                    stateValue: controlledRaceRef.current,
                 };
             },
             getGeometryMetrics: (): GeometryMetrics | null => {
@@ -208,7 +217,7 @@ const App = () => {
                 const textarea = document.getElementById('paste-textarea') as HTMLTextAreaElement | null;
                 return {
                     domValue: textarea?.value ?? '',
-                    stateValue: pasteValue,
+                    stateValue: pasteRef.current,
                 };
             },
             getProgrammaticSelectionSnapshot: () => {
@@ -232,17 +241,6 @@ const App = () => {
                     textareaValue: textarea?.value ?? '',
                 };
             },
-            mutateUncontrolledDom: (value: string) => {
-                const textarea = document.getElementById('uncontrolled-textarea') as HTMLTextAreaElement | null;
-                if (!textarea) {
-                    return;
-                }
-
-                textarea.value = value;
-                textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                textarea.dispatchEvent(new Event('change', { bubbles: true }));
-                setUncontrolledMirror(value);
-            },
             pasteLargeText: (text: string) => {
                 const textarea = document.getElementById('paste-textarea') as HTMLTextAreaElement | null;
                 if (!textarea) {
@@ -253,7 +251,13 @@ const App = () => {
                 const start = textarea.selectionStart ?? textarea.value.length;
                 const end = textarea.selectionEnd ?? textarea.value.length;
                 textarea.setRangeText(text, start, end, 'end');
-                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                textarea.dispatchEvent(
+                    new InputEvent('input', {
+                        bubbles: true,
+                        data: text,
+                        inputType: 'insertFromPaste',
+                    }),
+                );
                 textarea.dispatchEvent(new Event('change', { bubbles: true }));
             },
             programmaticSetValueAndSelect: (value: string, start: number, end: number) => {
@@ -290,7 +294,7 @@ const App = () => {
         return () => {
             delete window.__dyelightHarness;
         };
-    }, [controlledRaceValue, pasteValue]);
+    }, []);
 
     return (
         <main>

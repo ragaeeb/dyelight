@@ -32,55 +32,61 @@ test('overlay and textarea remain aligned across scrollbar and selection transit
     const readMetrics = async () =>
         page.evaluate(() => (window as any).__dyelightHarness.getGeometryMetrics() as GeometryMetrics);
 
-    await page.waitForFunction(() => {
+    await page.waitForFunction((contentWidthEpsilon) => {
         const metrics = (window as any).__dyelightHarness.getGeometryMetrics() as GeometryMetrics;
-        return metrics !== null && Math.abs(metrics.contentWidthDelta) < 0.51;
-    });
+        return metrics !== null && Math.abs(metrics.contentWidthDelta) < contentWidthEpsilon;
+    }, CONTENT_WIDTH_EPSILON);
 
     await assertGeometryAligned(readMetrics);
 
     await page.evaluate(() => (window as any).__dyelightHarness.setLongText());
-    await page.waitForFunction(() => {
+    await page.waitForFunction((contentWidthEpsilon) => {
         const metrics = (window as any).__dyelightHarness.getGeometryMetrics() as GeometryMetrics;
         return Boolean(
             metrics?.textareaHasVerticalScrollbar &&
-                Math.abs((metrics?.contentWidthDelta ?? 1)) < 0.51,
+                Math.abs((metrics?.contentWidthDelta ?? 1)) < contentWidthEpsilon,
         );
-    });
+    }, CONTENT_WIDTH_EPSILON);
 
     await assertGeometryAligned(readMetrics);
 
     await page.evaluate(() => (window as any).__dyelightHarness.scrollGeometryTo(240));
-    await page.waitForFunction(() => {
+    await page.waitForFunction((scrollTopEpsilon) => {
         const metrics = (window as any).__dyelightHarness.getGeometryMetrics() as GeometryMetrics;
         return Boolean(
             metrics?.textareaScrollTop >= 200 &&
-                Math.abs((metrics?.scrollTopDelta ?? 10_000)) < 8.5,
+                Math.abs((metrics?.scrollTopDelta ?? 10_000)) < scrollTopEpsilon,
         );
-    });
+    }, SCROLL_TOP_EPSILON);
 
     await assertGeometryAligned(readMetrics);
 
     await page.evaluate(() => (window as any).__dyelightHarness.selectGeometryRange(24, 72));
-    await page.waitForFunction(() => {
+    await page.waitForFunction(
+        ([contentWidthEpsilon, scrollTopEpsilon]) => {
         const metrics = (window as any).__dyelightHarness.getGeometryMetrics() as GeometryMetrics;
         return (
-            Math.abs(metrics?.contentWidthDelta ?? 1) < 0.51 &&
-            Math.abs((metrics?.scrollTopDelta ?? 10_000)) < 8.5
+            Math.abs(metrics?.contentWidthDelta ?? 1) < contentWidthEpsilon &&
+            Math.abs((metrics?.scrollTopDelta ?? 10_000)) < scrollTopEpsilon
         );
-    });
+        },
+        [CONTENT_WIDTH_EPSILON, SCROLL_TOP_EPSILON],
+    );
 
     await assertGeometryAligned(readMetrics);
 
     await page.evaluate(() => (window as any).__dyelightHarness.setShortText());
-    await page.waitForFunction(() => {
+    await page.waitForFunction(
+        ([contentWidthEpsilon, scrollTopEpsilon]) => {
         const metrics = (window as any).__dyelightHarness.getGeometryMetrics() as GeometryMetrics;
         return Boolean(
             !metrics?.textareaHasVerticalScrollbar &&
-                Math.abs((metrics?.contentWidthDelta ?? 1)) < 0.51 &&
-                Math.abs((metrics?.scrollTopDelta ?? 10_000)) < 8.5,
+                Math.abs((metrics?.contentWidthDelta ?? 1)) < contentWidthEpsilon &&
+                Math.abs((metrics?.scrollTopDelta ?? 10_000)) < scrollTopEpsilon,
         );
-    });
+        },
+        [CONTENT_WIDTH_EPSILON, SCROLL_TOP_EPSILON],
+    );
 
     await assertGeometryAligned(readMetrics);
 });

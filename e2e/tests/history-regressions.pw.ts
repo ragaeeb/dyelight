@@ -36,14 +36,19 @@ test('programmatic setValue keeps immediate selection stable', async ({ page }) 
     const start = text.indexOf('ظرف');
     const end = start + 'ظرف'.length;
 
-    await page.evaluate(
-        ([value, from, to]) => {
-            (window as any).__dyelightHarness.programmaticSetValueAndSelect(value, from, to);
-        },
-        [text, start, end],
-    );
+    const payload: [string, number, number] = [text, start, end];
+    await page.evaluate(([value, from, to]: [string, number, number]) => {
+        (window as any).__dyelightHarness.programmaticSetValueAndSelect(value, from, to);
+    }, payload);
 
-    await page.waitForTimeout(32);
+    await page.waitForFunction(([expectedStart, expectedEnd]) => {
+        const selection = (window as any).__dyelightHarness.getProgrammaticSelectionSnapshot() as SelectionSnapshot;
+        return (
+            selection.start === expectedStart &&
+            selection.end === expectedEnd &&
+            selection.selectedText === 'ظرف'
+        );
+    }, [start, end]);
 
     const selection = await page.evaluate(
         () => (window as any).__dyelightHarness.getProgrammaticSelectionSnapshot() as SelectionSnapshot,
@@ -80,7 +85,11 @@ test('large paste path converges to normalized controlled value', async ({ page 
 
     await page.waitForFunction(() => {
         const snapshot = (window as any).__dyelightHarness.getPasteSnapshot() as ValueSnapshot;
-        return snapshot.domValue === snapshot.stateValue;
+        return (
+            snapshot.domValue === snapshot.stateValue &&
+            snapshot.stateValue.includes('PASTE') &&
+            snapshot.stateValue.includes('END')
+        );
     });
 
     const snapshot = await page.evaluate(() => (window as any).__dyelightHarness.getPasteSnapshot() as ValueSnapshot);
@@ -129,7 +138,7 @@ test('typing into highlighted overlap textarea does not duplicate characters', a
 
     await input.click();
     await input.fill('');
-    await input.type(typed);
+    await input.pressSequentially(typed);
 
     await page.waitForFunction(() => {
         const snapshot = (window as any).__dyelightHarness.getOverlapSnapshot() as OverlaySnapshot;

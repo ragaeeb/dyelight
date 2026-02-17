@@ -32,10 +32,8 @@ test('mixed-script bidi matrix double-click maps to expected token', async ({ pa
 
     for (const scenario of cases) {
         await page.evaluate(
-            ({ text, token }) => {
-                (window as any).__dyelightHarness.setBidiCase(text, token);
-            },
-            { text: scenario.text, token: scenario.token },
+            ({ text, token }) => (window as any).__dyelightHarness.setBidiCase(text, token),
+            scenario,
         );
 
         await page.waitForFunction(() => {
@@ -49,14 +47,27 @@ test('mixed-script bidi matrix double-click maps to expected token', async ({ pa
             throw new Error('Marker rect missing');
         }
 
-        await page.mouse.dblclick(markerRect.x + markerRect.width / 2, markerRect.y + markerRect.height / 2);
-
-        await page.waitForFunction(() => {
-            const selected = (window as any).__dyelightHarness.getBidiSelectionText() as string;
-            return selected.length > 0;
-        });
+        let selectedToken = false;
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+            await page.mouse.dblclick(markerRect.x + markerRect.width / 2, markerRect.y + markerRect.height / 2);
+            try {
+                await page.waitForFunction(
+                    (expectedToken) => {
+                        const selected = (window as any).__dyelightHarness.getBidiSelectionText() as string;
+                        return selected.includes(expectedToken);
+                    },
+                    scenario.token,
+                    { timeout: 400 },
+                );
+                selectedToken = true;
+                break;
+            } catch {
+                // Retry once because browser word-boundary behavior can be timing-sensitive for mixed scripts.
+            }
+        }
 
         const selectedText = await page.evaluate(() => (window as any).__dyelightHarness.getBidiSelectionText() as string);
+        expect(selectedToken).toBeTruthy();
         expect(selectedText).toContain(scenario.token);
     }
 });
