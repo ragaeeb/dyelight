@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>DyeLight Playwright Harness</title>
+        <style>
+            :root {
+                font-family: "Times New Roman", serif;
+            }
+
+            body {
+                margin: 0;
+                padding: 20px;
+            }
+
+            main {
+                display: grid;
+                gap: 24px;
+                max-width: 1080px;
+            }
+
+            section {
+                border: 1px solid #d0d0d0;
+                border-radius: 8px;
+                padding: 12px;
+            }
+
+            h1 {
+                font-size: 18px;
+                margin: 0 0 8px;
+            }
+
+            .controls {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 12px;
+            }
+
+            .controls button {
+                border: 1px solid #aaa;
+                border-radius: 6px;
+                cursor: pointer;
+                padding: 6px 10px;
+            }
+
+            .arabic-marker {
+                background: rgba(255, 193, 7, 0.35);
+            }
+
+            .boundary-marker {
+                background: rgba(80, 160, 255, 0.3);
+            }
+        </style>
+    </head>
+    <body>
+        <div id="app"></div>
+        <script type="module" src="/e2e/harness/main.tsx"></script>
+    </body>
+</html>
