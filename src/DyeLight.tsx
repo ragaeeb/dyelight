@@ -9,6 +9,10 @@ import { AIOptimizedTelemetry } from './telemetry';
 import { isColorValue } from './textUtils';
 import type { DyeLightProps, DyeLightRef } from './types';
 
+const BIDI_INHERIT_STYLE: React.CSSProperties = {
+    unicodeBidi: 'inherit',
+};
+
 /**
  * @fileoverview DyeLight - A React textarea component with advanced text highlighting capabilities
  *
@@ -30,7 +34,11 @@ export const createLineElement = (
     lineHighlight?: string,
 ): React.ReactElement => {
     if (!lineHighlight) {
-        return <div key={lineIndex}>{content}</div>;
+        return (
+            <div key={lineIndex} style={BIDI_INHERIT_STYLE}>
+                {content}
+            </div>
+        );
     }
 
     const isColor = isColorValue(lineHighlight);
@@ -38,7 +46,7 @@ export const createLineElement = (
         <div
             className={isColor ? undefined : lineHighlight}
             key={lineIndex}
-            style={isColor ? { backgroundColor: lineHighlight } : undefined}
+            style={isColor ? { ...BIDI_INHERIT_STYLE, backgroundColor: lineHighlight } : BIDI_INHERIT_STYLE}
         >
             {content}
         </div>
@@ -95,7 +103,7 @@ export const renderHighlightedLine = (
                 <span
                     className={className}
                     key={`highlight-${lineIndex}-${idx.toString()}`}
-                    style={rangeStyle}
+                    style={rangeStyle ? { ...BIDI_INHERIT_STYLE, ...rangeStyle } : BIDI_INHERIT_STYLE}
                     data-range-start={range.absoluteStart}
                 >
                     {highlightedText}

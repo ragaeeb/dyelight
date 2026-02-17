@@ -11,7 +11,15 @@ describe('createLineElement', () => {
 
     it('applies inline style when highlight is color value', () => {
         const element = createLineElement('content', 1, 'rgba(0,0,0,0.1)');
-        expect((element.props as any).style).toEqual({ backgroundColor: 'rgba(0,0,0,0.1)' });
+        expect((element.props as any).style).toMatchObject({
+            backgroundColor: 'rgba(0,0,0,0.1)',
+            unicodeBidi: 'inherit',
+        });
+    });
+
+    it('propagates bidi context to line wrappers for mixed-script stability', () => {
+        const element = createLineElement('ظرف (adverbial)', 2);
+        expect((element.props as any).style).toMatchObject({ unicodeBidi: 'inherit' });
     });
 });
 
@@ -59,6 +67,16 @@ describe('renderHighlightedLine', () => {
 
         const renderedText = children.map(flattenText).join('');
         expect(renderedText).toBe(line);
+    });
+
+    it('propagates bidi context to highlight spans', () => {
+        const element = renderHighlightedLine('ظرف (adverbial)', 0, [{ end: 3, start: 0 }], undefined);
+        const children = Array.isArray((element.props as any).children)
+            ? ((element.props as any).children as any[])
+            : [(element.props as any).children];
+        const firstSpan = children.find((child) => child && child.type === 'span');
+
+        expect(firstSpan?.props.style).toMatchObject({ unicodeBidi: 'inherit' });
     });
 });
 
