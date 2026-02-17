@@ -266,9 +266,10 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
                     { highlightLayer: highlightLayerRef.current },
                 );
 
+                syncLayout(textareaRef);
                 onSelectProp?.(e);
             },
-            [onSelectProp, telemetry, textareaRef, currentValue, textareaHeight, isControlled, highlightLayerRef],
+            [onSelectProp, telemetry, textareaRef, currentValue, textareaHeight, isControlled, highlightLayerRef, syncLayout],
         );
 
         useEffect(() => {
@@ -300,13 +301,14 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
                     return;
                 }
                 recordSelectionChange();
+                syncLayout(textareaRef);
             };
 
             document.addEventListener('selectionchange', onDocumentSelectionChange);
             return () => {
                 document.removeEventListener('selectionchange', onDocumentSelectionChange);
             };
-        }, [telemetry, textareaRef, isControlled, highlightLayerRef]);
+        }, [telemetry, textareaRef, isControlled, highlightLayerRef, syncLayout]);
 
         useEffect(() => {
             if (!debug) {
