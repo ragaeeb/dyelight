@@ -27,8 +27,8 @@ describe('renderHighlightedLine', () => {
     it('creates spans for highlight ranges and preserves ordering', () => {
         const line = 'Hello world';
         const ranges = [
-            { className: 'secondary', end: 11, start: 6 },
-            { className: 'primary', end: 5, start: 0 },
+            { absoluteStart: 6, className: 'secondary', end: 11, start: 6 },
+            { absoluteStart: 0, className: 'primary', end: 5, start: 0 },
         ];
 
         const element = renderHighlightedLine(line, 0, ranges, undefined);
@@ -46,8 +46,8 @@ describe('renderHighlightedLine', () => {
     it('does not duplicate text when highlight ranges overlap', () => {
         const line = 'Questioner';
         const ranges = [
-            { className: 'outer', end: 10, start: 0 },
-            { className: 'inner', end: 10, start: 7 },
+            { absoluteStart: 0, className: 'outer', end: 10, start: 0 },
+            { absoluteStart: 7, className: 'inner', end: 10, start: 7 },
         ];
 
         const element = renderHighlightedLine(line, 0, ranges, undefined);
@@ -70,13 +70,33 @@ describe('renderHighlightedLine', () => {
     });
 
     it('propagates bidi context to highlight spans', () => {
-        const element = renderHighlightedLine('ظرف (adverbial)', 0, [{ end: 3, start: 0 }], undefined);
+        const element = renderHighlightedLine(
+            'ظرف (adverbial)',
+            0,
+            [{ absoluteStart: 0, end: 3, start: 0 }],
+            undefined,
+        );
         const children = Array.isArray((element.props as any).children)
             ? ((element.props as any).children as any[])
             : [(element.props as any).children];
         const firstSpan = children.find((child) => child && child.type === 'span');
 
         expect(firstSpan?.props.style).toMatchObject({ unicodeBidi: 'inherit' });
+    });
+
+    it('enforces unicodeBidi inheritance when range styles provide unicodeBidi', () => {
+        const element = renderHighlightedLine(
+            'ظرف (adverbial)',
+            0,
+            [{ absoluteStart: 0, end: 3, start: 0, style: { color: 'red', unicodeBidi: 'normal' } }],
+            undefined,
+        );
+        const children = Array.isArray((element.props as any).children)
+            ? ((element.props as any).children as any[])
+            : [(element.props as any).children];
+        const firstSpan = children.find((child) => child && child.type === 'span');
+
+        expect(firstSpan?.props.style).toMatchObject({ color: 'red', unicodeBidi: 'inherit' });
     });
 });
 

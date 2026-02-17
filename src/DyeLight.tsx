@@ -103,7 +103,7 @@ export const renderHighlightedLine = (
                 <span
                     className={className}
                     key={`highlight-${lineIndex}-${idx.toString()}`}
-                    style={rangeStyle ? { ...BIDI_INHERIT_STYLE, ...rangeStyle } : BIDI_INHERIT_STYLE}
+                    style={rangeStyle ? { ...rangeStyle, ...BIDI_INHERIT_STYLE } : BIDI_INHERIT_STYLE}
                     data-range-start={range.absoluteStart}
                 >
                     {highlightedText}
