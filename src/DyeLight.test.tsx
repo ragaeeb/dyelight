@@ -81,14 +81,14 @@ describe('renderHighlightedLine', () => {
             : [(element.props as any).children];
         const firstSpan = children.find((child) => child && child.type === 'span');
 
-        expect(firstSpan?.props.style).toMatchObject({ unicodeBidi: 'inherit' });
+        expect(firstSpan?.props.style).toMatchObject({ unicodeBidi: 'normal' });
     });
 
-    it('enforces unicodeBidi inheritance when range styles provide unicodeBidi', () => {
+    it('enforces unicodeBidi normal when range styles provide conflicting unicodeBidi', () => {
         const element = renderHighlightedLine(
             'ظرف (adverbial)',
             0,
-            [{ absoluteStart: 0, end: 3, start: 0, style: { color: 'red', unicodeBidi: 'normal' } }],
+            [{ absoluteStart: 0, end: 3, start: 0, style: { color: 'red', unicodeBidi: 'isolate' } }],
             undefined,
         );
         const children = Array.isArray((element.props as any).children)
@@ -96,7 +96,7 @@ describe('renderHighlightedLine', () => {
             : [(element.props as any).children];
         const firstSpan = children.find((child) => child && child.type === 'span');
 
-        expect(firstSpan?.props.style).toMatchObject({ color: 'red', unicodeBidi: 'inherit' });
+        expect(firstSpan?.props.style).toMatchObject({ color: 'red', unicodeBidi: 'normal' });
     });
 });
 

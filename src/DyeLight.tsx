@@ -9,8 +9,12 @@ import { AIOptimizedTelemetry } from './telemetry';
 import { isColorValue } from './textUtils';
 import type { DyeLightProps, DyeLightRef } from './types';
 
-const BIDI_INHERIT_STYLE: React.CSSProperties = {
+const BIDI_LINE_STYLE: React.CSSProperties = {
     unicodeBidi: 'inherit',
+};
+
+const BIDI_SPAN_STYLE: React.CSSProperties = {
+    unicodeBidi: 'normal',
 };
 
 /**
@@ -35,7 +39,7 @@ export const createLineElement = (
 ): React.ReactElement => {
     if (!lineHighlight) {
         return (
-            <div key={lineIndex} style={BIDI_INHERIT_STYLE}>
+            <div key={lineIndex} style={BIDI_LINE_STYLE}>
                 {content}
             </div>
         );
@@ -46,7 +50,7 @@ export const createLineElement = (
         <div
             className={isColor ? undefined : lineHighlight}
             key={lineIndex}
-            style={isColor ? { ...BIDI_INHERIT_STYLE, backgroundColor: lineHighlight } : BIDI_INHERIT_STYLE}
+            style={isColor ? { ...BIDI_LINE_STYLE, backgroundColor: lineHighlight } : BIDI_LINE_STYLE}
         >
             {content}
         </div>
@@ -103,7 +107,7 @@ export const renderHighlightedLine = (
                 <span
                     className={className}
                     key={`highlight-${lineIndex}-${idx.toString()}`}
-                    style={rangeStyle ? { ...rangeStyle, ...BIDI_INHERIT_STYLE } : BIDI_INHERIT_STYLE}
+                    style={rangeStyle ? { ...rangeStyle, ...BIDI_SPAN_STYLE } : BIDI_SPAN_STYLE}
                     data-range-start={range.absoluteStart}
                 >
                     {highlightedText}
@@ -201,7 +205,7 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             textareaHeightRef.current = textareaHeight;
         }, [textareaHeight]);
 
-        useEffect(() => {
+        useLayoutEffect(() => {
             currentValueRef.current = currentValue;
         }, [currentValue]);
 
@@ -223,10 +227,8 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
         const handleChangeWithResize = useCallback(
             (e: React.ChangeEvent<HTMLTextAreaElement>) => {
                 handleChange(e);
-                handleAutoResize(e.target);
-                syncLayout(textareaRef);
             },
-            [handleChange, handleAutoResize, syncLayout, textareaRef],
+            [handleChange],
         );
 
         const setValueWithResize = useCallback(
@@ -235,8 +237,9 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
                 if (textareaRef.current) {
                     handleAutoResize(textareaRef.current);
                 }
+                syncLayout(textareaRef);
             },
-            [setValue, handleAutoResize, textareaRef],
+            [setValue, handleAutoResize, textareaRef, syncLayout],
         );
 
         const handleScroll = useCallback(
@@ -376,6 +379,17 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
             syncLayout(textareaRef);
         }, [layoutSyncKey, handleAutoResize, enableAutoResize, syncLayout, textareaRef]);
 
+        useLayoutEffect(() => {
+            if (!textareaRef.current) {
+                return;
+            }
+
+            if (enableAutoResize) {
+                handleAutoResize(textareaRef.current);
+            }
+            syncLayout(textareaRef);
+        }, [currentValue, enableAutoResize, handleAutoResize, syncLayout, textareaRef]);
+
         useEffect(() => {
             if (!textareaRef.current) {
                 return;
@@ -413,7 +427,7 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
 
         return (
             <div className={containerClassName} ref={containerRef} style={{ ...DEFAULT_CONTAINER_STYLE, ...style }}>
-                <div aria-hidden="true" ref={highlightLayerRef} style={highlightLayerStyle}>
+                <div aria-hidden="true" dir={dir} ref={highlightLayerRef} style={highlightLayerStyle}>
                     {highlightedContent}
                 </div>
 
