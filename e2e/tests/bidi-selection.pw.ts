@@ -26,7 +26,7 @@ test('double-clicking Arabic token keeps selection mapped to the Arabic word', a
 
     expect(styles.overlay).not.toBeNull();
     expect(styles.line).toBe(styles.overlay);
-    expect(styles.span).toBe(styles.overlay);
+    expect(styles.span).toBe('normal');
 
     const markerRect = await page.evaluate(() => (window as any).__dyelightHarness.getArabicMarkerRect() as MarkerRect);
     expect(markerRect).not.toBeNull();

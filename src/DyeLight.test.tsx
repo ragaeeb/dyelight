@@ -81,10 +81,10 @@ describe('renderHighlightedLine', () => {
             : [(element.props as any).children];
         const firstSpan = children.find((child) => child && child.type === 'span');
 
-        expect(firstSpan?.props.style).toMatchObject({ unicodeBidi: 'inherit' });
+        expect(firstSpan?.props.style).toMatchObject({ unicodeBidi: 'normal' });
     });
 
-    it('enforces unicodeBidi inheritance when range styles provide unicodeBidi', () => {
+    it('enforces unicodeBidi normal when range styles provide unicodeBidi', () => {
         const element = renderHighlightedLine(
             'ظرف (adverbial)',
             0,
@@ -96,7 +96,7 @@ describe('renderHighlightedLine', () => {
             : [(element.props as any).children];
         const firstSpan = children.find((child) => child && child.type === 'span');
 
-        expect(firstSpan?.props.style).toMatchObject({ color: 'red', unicodeBidi: 'inherit' });
+        expect(firstSpan?.props.style).toMatchObject({ color: 'red', unicodeBidi: 'normal' });
     });
 });
 
