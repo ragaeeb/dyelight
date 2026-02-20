@@ -227,10 +227,8 @@ export const DyeLight = forwardRef<DyeLightRef, DyeLightProps>(
         const handleChangeWithResize = useCallback(
             (e: React.ChangeEvent<HTMLTextAreaElement>) => {
                 handleChange(e);
-                handleAutoResize(e.target);
-                syncLayout(textareaRef);
             },
-            [handleChange, handleAutoResize, syncLayout, textareaRef],
+            [handleChange],
         );
 
         const setValueWithResize = useCallback(

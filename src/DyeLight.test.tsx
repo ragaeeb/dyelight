@@ -84,11 +84,11 @@ describe('renderHighlightedLine', () => {
         expect(firstSpan?.props.style).toMatchObject({ unicodeBidi: 'normal' });
     });
 
-    it('enforces unicodeBidi normal when range styles provide unicodeBidi', () => {
+    it('enforces unicodeBidi normal when range styles provide conflicting unicodeBidi', () => {
         const element = renderHighlightedLine(
             'ظرف (adverbial)',
             0,
-            [{ absoluteStart: 0, end: 3, start: 0, style: { color: 'red', unicodeBidi: 'normal' } }],
+            [{ absoluteStart: 0, end: 3, start: 0, style: { color: 'red', unicodeBidi: 'isolate' } }],
             undefined,
         );
         const children = Array.isArray((element.props as any).children)
